@@ -13,6 +13,8 @@
   "language.switch": "Switch language",
   "language.zh-CN": "中文",
   "language.en": "English",
+  "menuBar.tools": "All Tools",
+  "menuBar.quit": "Quit Mac Gadgets",
   "app.emptySelection.title": "Choose a tool",
   "app.emptySelection.description": "Select a utility from the sidebar to get started.",
   "common.editorSummary": "%lld lines  %lld characters",

@@ -13,6 +13,8 @@
   "language.switch": "切换语言",
   "language.zh-CN": "中文",
   "language.en": "English",
+  "menuBar.tools": "所有工具",
+  "menuBar.quit": "退出 Mac Gadgets",
   "app.emptySelection.title": "选择一个工具",
   "app.emptySelection.description": "从左侧列表中选择要使用的便捷工具。",
   "common.editorSummary": "%lld 行  %lld 字符",

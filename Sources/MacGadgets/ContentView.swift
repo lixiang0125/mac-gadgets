@@ -2,7 +2,7 @@ import SwiftUI
 
 struct ContentView: View {
     @EnvironmentObject private var localization: LocalizationStore
-    @State private var selectedTool: ToolKind? = .chineseConversion
+    @EnvironmentObject private var router: AppRouter
     @State private var searchText = ""
     @AppStorage("appearance") private var appearanceRawValue = AppAppearance.system.rawValue
 
@@ -77,11 +77,11 @@ struct ContentView: View {
                 .padding(.horizontal, 12)
                 .padding(.bottom, 10)
 
-                List(selection: $selectedTool) {
+                List(selection: $router.selectedTool) {
                     ForEach(groupedTools, id: \.initial) { group in
                         Section(group.initial) {
                             ForEach(group.tools) { tool in
-                                ToolSidebarRow(tool: tool, isSelected: selectedTool == tool)
+                                ToolSidebarRow(tool: tool, isSelected: router.selectedTool == tool)
                                     .tag(tool)
                             }
                         }
@@ -128,7 +128,7 @@ struct ContentView: View {
             .navigationSplitViewColumnWidth(min: 260, ideal: 292, max: 350)
         } detail: {
             Group {
-                switch selectedTool {
+                switch router.selectedTool {
                 case .clipboardHistory:
                     ClipboardHistoryView()
                 case .chineseConversion:
@@ -152,7 +152,7 @@ struct ContentView: View {
                 }
             }
             .navigationTitle(
-                selectedTool.map { localization.text($0.titleKey) }
+                router.selectedTool.map { localization.text($0.titleKey) }
                     ?? localization.text("app.name")
             )
         }
@@ -160,6 +160,11 @@ struct ContentView: View {
         .tint(AppTheme.accent)
         .preferredColorScheme(appearance.colorScheme)
         .environment(\.locale, localization.language.locale)
+        .background {
+            MainWindowReader { window in
+                router.registerMainWindow(window)
+            }
+        }
     }
 }
 

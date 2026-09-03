@@ -26,6 +26,7 @@ The sidebar sorts tools by the pinyin of their Chinese names and groups them by 
 
 - A consistent native SwiftUI hierarchy that adapts to light and dark appearances, with a manual appearance control at the bottom of the sidebar.
 - Every tool has a top-right switch for changing instantly between Chinese and English; the selection is stored locally.
+- While running, the app keeps an icon in the menu bar; choose any tool there to reveal the main window and open that tool directly.
 - Native Liquid Glass action bars, search, and primary buttons on macOS 26. Older systems and Reduce Transparency mode fall back to clear system materials or solid surfaces.
 - The blue glass `MG` monogram icon receives transparent safe-area padding and continuous corners during packaging, with a complete set of macOS icon sizes.
 - PDF and image lists support file drop, row dragging, and button-assisted ordering.

@@ -29,7 +29,7 @@ final class LocalizationTests: TemporaryDirectoryTestCase {
         let sourcesDirectory = testRepositoryRoot
             .appendingPathComponent("Sources/MacGadgets", isDirectory: true)
         let keyPattern = try NSRegularExpression(
-            pattern: #"\"((?:app|appearance|language|common|tool|chinese|clipboard|imagePDF|imageStitch|jsonFormatter|jsonDiff|pdfMerge|error)\.[A-Za-z0-9.-]+)\""#
+            pattern: #"\"((?:app|appearance|language|menuBar|common|tool|chinese|clipboard|imagePDF|imageStitch|jsonFormatter|jsonDiff|pdfMerge|error)\.[A-Za-z0-9.-]+)\""#
         )
         let enumerator = try XCTUnwrap(
             FileManager.default.enumerator(
