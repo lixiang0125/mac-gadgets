@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct ToolHeader: View {
@@ -48,24 +49,12 @@ struct EditorPane: View {
                 }
             }
 
-            ZStack(alignment: .topLeading) {
-                TextEditor(text: $text)
-                    .font(.system(.body, design: .monospaced))
-                    .lineSpacing(3)
-                    .scrollContentBackground(.hidden)
-                    .padding(9)
-                    .background(AppTheme.editorSurface)
-                    .disabled(!isEditable)
-
-                if text.isEmpty && !placeholder.isEmpty {
-                    Text(placeholder)
-                        .font(.system(.body, design: .monospaced))
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal, 15)
-                        .padding(.vertical, 17)
-                        .allowsHitTesting(false)
-                }
-            }
+            AlignedTextEditor(
+                text: $text,
+                placeholder: placeholder,
+                isEditable: isEditable
+            )
+            .background(AppTheme.editorSurface)
             .clipShape(RoundedRectangle(cornerRadius: AppTheme.surfaceRadius, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: AppTheme.surfaceRadius, style: .continuous)
@@ -77,6 +66,159 @@ struct EditorPane: View {
     private var editorSummary: String {
         let lineCount = text.isEmpty ? 0 : text.split(separator: "\n", omittingEmptySubsequences: false).count
         return "\(lineCount) 行  \(text.count) 字符"
+    }
+}
+
+private struct AlignedTextEditor: NSViewRepresentable {
+    @Binding var text: String
+    let placeholder: String
+    let isEditable: Bool
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(text: $text)
+    }
+
+    func makeNSView(context: Context) -> NSScrollView {
+        let scrollView = NSScrollView()
+        scrollView.borderType = .noBorder
+        scrollView.drawsBackground = false
+        scrollView.hasVerticalScroller = true
+        scrollView.hasHorizontalScroller = false
+        scrollView.autohidesScrollers = true
+
+        let contentSize = scrollView.contentSize
+        let textStorage = NSTextStorage()
+        let layoutManager = NSLayoutManager()
+        let textContainer = NSTextContainer(size: NSSize(
+            width: contentSize.width,
+            height: .greatestFiniteMagnitude
+        ))
+        textContainer.widthTracksTextView = true
+        textContainer.lineFragmentPadding = 5
+        layoutManager.addTextContainer(textContainer)
+        textStorage.addLayoutManager(layoutManager)
+
+        let textView = PlaceholderTextView(
+            frame: NSRect(origin: .zero, size: contentSize),
+            textContainer: textContainer
+        )
+        let font = NSFont.monospacedSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)
+        let paragraphStyle = NSMutableParagraphStyle()
+        paragraphStyle.lineSpacing = 3
+
+        textView.autoresizingMask = [.width]
+        textView.minSize = NSSize(width: 0, height: contentSize.height)
+        textView.maxSize = NSSize(
+            width: CGFloat.greatestFiniteMagnitude,
+            height: CGFloat.greatestFiniteMagnitude
+        )
+        textView.isVerticallyResizable = true
+        textView.isHorizontallyResizable = false
+        textView.drawsBackground = false
+        textView.textContainerInset = NSSize(width: 10, height: 10)
+        textView.font = font
+        textView.textColor = .labelColor
+        textView.insertionPointColor = .controlAccentColor
+        textView.defaultParagraphStyle = paragraphStyle
+        textView.typingAttributes = [
+            .font: font,
+            .foregroundColor: NSColor.labelColor,
+            .paragraphStyle: paragraphStyle
+        ]
+        textView.isRichText = false
+        textView.importsGraphics = false
+        textView.allowsUndo = true
+        textView.usesFindBar = true
+        textView.isAutomaticQuoteSubstitutionEnabled = false
+        textView.isAutomaticDashSubstitutionEnabled = false
+        textView.isAutomaticTextReplacementEnabled = false
+        textView.isAutomaticSpellingCorrectionEnabled = false
+        textView.delegate = context.coordinator
+        textView.string = text
+        textView.placeholder = placeholder
+        textView.setAccessibilityPlaceholderValue(placeholder)
+        textView.isEditable = isEditable
+        textView.isSelectable = true
+
+        scrollView.documentView = textView
+        return scrollView
+    }
+
+    func updateNSView(_ scrollView: NSScrollView, context: Context) {
+        guard let textView = scrollView.documentView as? PlaceholderTextView else { return }
+
+        if textView.string != text {
+            let selections = textView.selectedRanges
+            textView.string = text
+            let validSelections = selections.filter {
+                NSMaxRange($0.rangeValue) <= (text as NSString).length
+            }
+            if validSelections.isEmpty {
+                textView.setSelectedRange(NSRange(location: (text as NSString).length, length: 0))
+            } else {
+                textView.selectedRanges = validSelections
+            }
+        }
+
+        textView.placeholder = placeholder
+        textView.setAccessibilityPlaceholderValue(placeholder)
+        textView.isEditable = isEditable
+        textView.needsDisplay = true
+    }
+
+    final class Coordinator: NSObject, NSTextViewDelegate {
+        @Binding private var text: String
+
+        init(text: Binding<String>) {
+            _text = text
+        }
+
+        func textDidChange(_ notification: Notification) {
+            guard let textView = notification.object as? NSTextView else { return }
+            text = textView.string
+            textView.needsDisplay = true
+        }
+    }
+}
+
+private final class PlaceholderTextView: NSTextView {
+    var placeholder = "" {
+        didSet {
+            if oldValue != placeholder {
+                needsDisplay = true
+            }
+        }
+    }
+
+    override func draw(_ dirtyRect: NSRect) {
+        super.draw(dirtyRect)
+
+        guard string.isEmpty, !placeholder.isEmpty, window?.firstResponder !== self else { return }
+
+        let paragraphStyle = defaultParagraphStyle ?? NSParagraphStyle.default
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: font ?? NSFont.monospacedSystemFont(ofSize: NSFont.systemFontSize, weight: .regular),
+            .foregroundColor: NSColor.placeholderTextColor,
+            .paragraphStyle: paragraphStyle
+        ]
+        let lineFragmentPadding = textContainer?.lineFragmentPadding ?? 0
+        let origin = NSPoint(
+            x: textContainerInset.width + lineFragmentPadding,
+            y: textContainerInset.height
+        )
+        placeholder.draw(at: origin, withAttributes: attributes)
+    }
+
+    override func becomeFirstResponder() -> Bool {
+        let result = super.becomeFirstResponder()
+        needsDisplay = true
+        return result
+    }
+
+    override func resignFirstResponder() -> Bool {
+        let result = super.resignFirstResponder()
+        needsDisplay = true
+        return result
     }
 }
 

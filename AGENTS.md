@@ -19,7 +19,9 @@ The deployment target is macOS 14. The project is currently built with Swift 6.2
 - `Tests/MacGadgetsTests`: service, ordering, and file round-trip coverage.
 - `Packaging`: bundle metadata and the 1024 x 1024 app-icon master.
 - `scripts/build-app.sh`: reproducible local `.app` packaging and ad-hoc signing.
+- `scripts/build-release.sh`: reproducible latest-DMG packaging; reads the version from `Packaging/Info.plist`.
 - `dist`: generated output. Never edit files inside it by hand.
+- `release/Mac-Gadgets-latest.dmg`: checked-in current installer and the stable target of the README download link. Regenerate it with the release script; never edit it by hand.
 
 ## Implementation conventions
 
@@ -54,6 +56,8 @@ git diff --check
 swift test
 ./scripts/build-app.sh
 codesign --verify --deep --strict "dist/Mac Gadgets.app"
+./scripts/build-release.sh
+hdiutil verify "release/Mac-Gadgets-latest.dmg"
 ```
 
 For UI changes, also launch the packaged app and inspect at least light and dark appearance. For packaging or icon changes, verify `Contents/Info.plist`, the packaged resources, and the result shown by Finder rather than trusting source files alone.
@@ -96,3 +100,7 @@ When maintaining this file:
 - Finder can observe a manually assembled bundle before its resources are complete and cache a generic icon. Touch the top-level `.app` after signing so a watched Finder window reloads the finished bundle.
 - Small app icons punish detail. Always inspect the master at 128 px and 32 px before accepting a design.
 - Content surfaces and translucent control surfaces have different jobs. Applying glass to editors or large result panes reduces legibility and weakens the interaction hierarchy.
+- Draw editor placeholders from the same native `NSTextView` text-container metrics as real content, and hide them while the editor is focused. Independent SwiftUI overlay padding drifts from the insertion point across system versions and font metrics.
+- When a formatter transforms one editable document into another representation of the same document, prefer an in-place single-editor flow. Preserve the original text on validation failure so the user can correct it.
+- Keep the public DMG download at `release/Mac-Gadgets-latest.dmg`; its stable name lets the README link survive version changes. Treat `Packaging/Info.plist` as the release-version source of truth.
+- A release DMG must contain the signed `Mac Gadgets.app` and an `Applications` symlink. Mount it read-only and verify both entries plus the embedded app signature before handoff.

@@ -2,13 +2,19 @@
 
 一个原生 SwiftUI macOS 便捷工具箱。所有文本与文件均在本机处理，不会上传到网络。
 
+## 下载最新版
+
+[下载 Mac Gadgets 最新版 DMG](release/Mac-Gadgets-latest.dmg)
+
+打开 DMG 后，将 `Mac Gadgets.app` 拖入“应用程序”文件夹即可完成安装。
+
 ## 首版工具
 
 - 中文简繁转换：文本直接转换，支持读取与保存 TXT 文件。
 - 多 PDF 合并：批量添加、调整顺序并合并 PDF。
 - 图片与 PDF 互转：多张图片按顺序生成 PDF；PDF 每页导出一张 PNG。
 - 多图片拼成长图：支持横向、竖向拼接和顺序调整。
-- JSON 格式化：语法校验、统一缩进及可选键名排序。
+- JSON 格式化：在同一个编辑器内完成语法校验、统一缩进及可选键名排序。
 - JSON 对比：格式化后逐行对齐，高亮新增、删除及修改行。
 
 左侧工具列表以工具名称的拼音排序并按首字母分组，也支持中文、说明文字和拼音搜索。
@@ -51,4 +57,12 @@ swift test
 open "dist/Mac Gadgets.app"
 ```
 
-脚本会生成本机临时签名的 `dist/Mac Gadgets.app`。正式分发前仍需配置开发者签名、公证和应用图标。
+脚本会生成本机临时签名的 `dist/Mac Gadgets.app`。正式分发前仍需配置 Apple Developer 签名与公证。
+
+## 生成最新版 DMG
+
+```bash
+./scripts/build-release.sh
+```
+
+脚本从 `Packaging/Info.plist` 读取版本号，重新构建并签名 App，然后覆盖生成 `release/Mac-Gadgets-latest.dmg`。README 使用这个稳定路径，发布新版本时无需修改下载链接。
