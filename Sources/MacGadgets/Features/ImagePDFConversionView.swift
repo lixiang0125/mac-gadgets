@@ -25,22 +25,31 @@ struct ImagePDFConversionView: View {
     @State private var hasError = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
+        VStack(alignment: .leading, spacing: AppTheme.pageSpacing) {
             ToolHeader(
                 title: "多图片与 PDF 互转",
                 description: "将多张图片按顺序生成 PDF，或把 PDF 的每一页导出为 PNG。",
                 systemImage: "photo.on.rectangle.angled"
             )
 
-            Picker("转换模式", selection: $mode) {
-                ForEach(Mode.allCases) { item in
-                    Text(item.title).tag(item)
+            ToolControlBar {
+                Text("转换模式")
+                    .font(.callout.weight(.medium))
+                Picker("转换模式", selection: $mode) {
+                    ForEach(Mode.allCases) { item in
+                        Text(item.title).tag(item)
+                    }
                 }
-            }
-            .pickerStyle(.segmented)
-            .frame(maxWidth: 360)
-            .onChange(of: mode) {
-                statusMessage = ""
+                .pickerStyle(.segmented)
+                .frame(maxWidth: 360)
+                .labelsHidden()
+                .onChange(of: mode) {
+                    statusMessage = ""
+                }
+                Spacer()
+                Text(mode == .imagesToPDF ? "每张图片生成一页" : "每页导出一张 PNG")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
             }
 
             Group {
@@ -52,32 +61,35 @@ struct ImagePDFConversionView: View {
                 }
             }
 
-            HStack {
+            ToolControlBar {
                 if mode == .imagesToPDF {
                     Button("生成并保存 PDF…", systemImage: "doc.badge.plus") {
                         saveImagesAsPDF()
                     }
-                    .buttonStyle(.borderedProminent)
+                    .appPrimaryActionStyle()
                     .disabled(imageFiles.isEmpty)
+                    .keyboardShortcut("s", modifiers: .command)
                 } else {
                     Button("选择目录并导出…", systemImage: "photo.stack") {
                         exportPDFPages()
                     }
-                    .buttonStyle(.borderedProminent)
+                    .appPrimaryActionStyle()
                     .disabled(pdfFile == nil)
+                    .keyboardShortcut("s", modifiers: .command)
                 }
 
                 Spacer()
                 StatusMessageView(message: statusMessage, isError: hasError)
             }
         }
-        .padding(24)
+        .toolPageStyle()
     }
 
     private var imagesToPDFContent: some View {
         VStack(spacing: 12) {
-            HStack {
+            ToolControlBar {
                 Button("添加图片…", systemImage: "plus") { addImages() }
+                    .keyboardShortcut("o", modifiers: .command)
                 Button("移除", systemImage: "minus") { removeSelectedImage() }
                     .disabled(selectedImageFile == nil)
                 Button("清空", systemImage: "trash") {
@@ -86,7 +98,8 @@ struct ImagePDFConversionView: View {
                 }
                 .disabled(imageFiles.isEmpty)
                 Spacer()
-                Text("每张图片生成一页 · \(imageFiles.count) 页")
+                Text("\(imageFiles.count) 张图片")
+                    .font(.callout.monospacedDigit())
                     .foregroundStyle(.secondary)
             }
 
@@ -115,16 +128,18 @@ struct ImagePDFConversionView: View {
                         .tag(url)
                         .padding(.vertical, 3)
                     }
-                }
-                .overlay {
-                    if imageFiles.isEmpty {
-                        ContentUnavailableView(
-                            "尚未添加图片",
-                            systemImage: "photo.badge.plus",
-                            description: Text("支持 macOS 能读取的常见图片格式。")
-                        )
+                    .onMove { offsets, destination in
+                        imageFiles.move(fromOffsets: offsets, toOffset: destination)
                     }
                 }
+                .workspaceSurface()
+                .fileDropTarget(
+                    isEmpty: imageFiles.isEmpty,
+                    title: "拖入图片开始",
+                    description: "支持 macOS 可读取的图片格式，可拖动行调整 PDF 页序。",
+                    systemImage: "photo.badge.plus",
+                    onDrop: addDroppedImages
+                )
 
                 FileOrderButtons(
                     canMoveUp: selectedImageIndex.map { $0 > 0 } ?? false,
@@ -138,11 +153,10 @@ struct ImagePDFConversionView: View {
 
     private var pdfToImagesContent: some View {
         VStack(spacing: 18) {
-            GroupBox {
-                HStack(spacing: 14) {
+            HStack(spacing: 14) {
                     Image(systemName: "doc.richtext")
                         .font(.system(size: 34))
-                        .foregroundStyle(.red)
+                        .foregroundStyle(AppTheme.accent)
                     VStack(alignment: .leading, spacing: 4) {
                         Text(pdfFile?.lastPathComponent ?? "尚未选择 PDF")
                             .font(.headline)
@@ -158,11 +172,19 @@ struct ImagePDFConversionView: View {
                     Button(pdfFile == nil ? "选择 PDF…" : "更换 PDF…") {
                         selectPDF()
                     }
+                    .keyboardShortcut("o", modifiers: .command)
                 }
-                .padding(8)
-            }
+                .padding(16)
+                .workspaceSurface()
+                .fileDropTarget(
+                    isEmpty: false,
+                    title: "",
+                    description: "",
+                    systemImage: "doc.richtext",
+                    onDrop: selectDroppedPDF
+                )
 
-            HStack {
+            ToolControlBar {
                 Text("导出清晰度")
                     .font(.headline)
                 Picker("导出清晰度", selection: $renderScale) {
@@ -192,11 +214,18 @@ struct ImagePDFConversionView: View {
             types: [.image],
             allowsMultipleSelection: true
         )
-        for url in urls where !imageFiles.contains(url) {
-            imageFiles.append(url)
+        addDroppedImages(urls)
+    }
+
+    private func addDroppedImages(_ urls: [URL]) {
+        let images = urls.filter { NSImage(contentsOf: $0) != nil }
+        for url in images where !imageFiles.contains(url) { imageFiles.append(url) }
+        if selectedImageFile == nil { selectedImageFile = images.first }
+        if images.isEmpty && !urls.isEmpty {
+            showStatus("未找到可读取的图片", isError: true)
+        } else {
+            statusMessage = ""
         }
-        if selectedImageFile == nil { selectedImageFile = urls.first }
-        statusMessage = ""
     }
 
     private func removeSelectedImage() {
@@ -234,11 +263,20 @@ struct ImagePDFConversionView: View {
     }
 
     private func selectPDF() {
-        pdfFile = FilePanels.openFiles(
+        let urls = FilePanels.openFiles(
             title: "选择 PDF",
             types: [.pdf],
             allowsMultipleSelection: false
-        ).first
+        )
+        selectDroppedPDF(urls)
+    }
+
+    private func selectDroppedPDF(_ urls: [URL]) {
+        guard let url = urls.first(where: { $0.pathExtension.lowercased() == "pdf" }) else {
+            if !urls.isEmpty { showStatus("仅支持 PDF 文件", isError: true) }
+            return
+        }
+        pdfFile = url
         statusMessage = ""
     }
 

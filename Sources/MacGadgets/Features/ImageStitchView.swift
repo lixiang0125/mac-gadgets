@@ -11,14 +11,16 @@ struct ImageStitchView: View {
     @State private var hasError = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
+        VStack(alignment: .leading, spacing: AppTheme.pageSpacing) {
             ToolHeader(
                 title: "多图片拼成长图",
                 description: "按列表顺序横向或竖向拼接；较短边会居中对齐，透明区域会被保留。",
                 systemImage: "rectangle.3.group"
             )
 
-            HStack {
+            ToolControlBar {
+                Text("拼接方向")
+                    .font(.callout.weight(.medium))
                 Picker("拼接方向", selection: $direction) {
                     ForEach(ImageStitchDirection.allCases) { item in
                         Label(item.title, systemImage: item.systemImage).tag(item)
@@ -26,10 +28,12 @@ struct ImageStitchView: View {
                 }
                 .pickerStyle(.segmented)
                 .frame(maxWidth: 340)
+                .labelsHidden()
                 .onChange(of: direction) { previewImage = nil }
 
                 Spacer()
                 Button("添加图片…", systemImage: "plus") { addImages() }
+                    .keyboardShortcut("o", modifiers: .command)
                 Button("移除", systemImage: "minus") { removeSelected() }
                     .disabled(selectedFile == nil)
                 Button("清空", systemImage: "trash") {
@@ -64,13 +68,20 @@ struct ImageStitchView: View {
                             }
                             .tag(url)
                             .padding(.vertical, 3)
-                        }
                     }
-                    .overlay {
-                        if files.isEmpty {
-                            ContentUnavailableView("尚未添加图片", systemImage: "photo.stack")
-                        }
+                    .onMove { offsets, destination in
+                        files.move(fromOffsets: offsets, toOffset: destination)
+                        previewImage = nil
                     }
+                }
+                    .workspaceSurface()
+                    .fileDropTarget(
+                        isEmpty: files.isEmpty,
+                        title: "拖入图片开始",
+                        description: "按列表从上到下排列，可拖动行或使用右侧按钮调整顺序。",
+                        systemImage: "photo.stack",
+                        onDrop: addDroppedImages
+                    )
 
                     FileOrderButtons(
                         canMoveUp: selectedIndex.map { $0 > 0 } ?? false,
@@ -81,7 +92,18 @@ struct ImageStitchView: View {
                 }
                 .frame(minWidth: 330)
 
-                GroupBox("预览") {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text("预览")
+                            .font(.headline)
+                        Spacer()
+                        if let previewImage {
+                            let size = ImageStitchService.pixelSize(of: previewImage)
+                            Text("\(Int(size.width)) × \(Int(size.height))")
+                                .font(.caption.monospacedDigit())
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
                     ZStack {
                         Color(nsColor: .windowBackgroundColor)
                         if let previewImage {
@@ -99,21 +121,25 @@ struct ImageStitchView: View {
                             )
                         }
                     }
+                    .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
                 }
+                .padding(12)
+                .workspaceSurface()
                 .frame(minWidth: 330)
             }
 
-            HStack {
+            ToolControlBar {
                 Button("生成预览", systemImage: "eye") { generatePreview() }
                     .disabled(files.isEmpty)
                 Button("保存长图…", systemImage: "square.and.arrow.down") { saveStitchedImage() }
-                    .buttonStyle(.borderedProminent)
+                    .appPrimaryActionStyle()
                     .disabled(files.isEmpty)
+                    .keyboardShortcut("s", modifiers: .command)
                 Spacer()
                 StatusMessageView(message: statusMessage, isError: hasError)
             }
         }
-        .padding(24)
+        .toolPageStyle()
     }
 
     private var selectedIndex: Int? {
@@ -127,10 +153,19 @@ struct ImageStitchView: View {
             types: [.image],
             allowsMultipleSelection: true
         )
-        for url in urls where !files.contains(url) { files.append(url) }
-        if selectedFile == nil { selectedFile = urls.first }
+        addDroppedImages(urls)
+    }
+
+    private func addDroppedImages(_ urls: [URL]) {
+        let images = urls.filter { NSImage(contentsOf: $0) != nil }
+        for url in images where !files.contains(url) { files.append(url) }
+        if selectedFile == nil { selectedFile = images.first }
         previewImage = nil
-        statusMessage = ""
+        if images.isEmpty && !urls.isEmpty {
+            showStatus("未找到可读取的图片", isError: true)
+        } else {
+            statusMessage = ""
+        }
     }
 
     private func removeSelected() {

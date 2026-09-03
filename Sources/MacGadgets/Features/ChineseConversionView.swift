@@ -10,14 +10,16 @@ struct ChineseConversionView: View {
     @State private var hasError = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
+        VStack(alignment: .leading, spacing: AppTheme.pageSpacing) {
             ToolHeader(
                 title: "中文简繁转换",
                 description: "转换输入文本，或读取 TXT 文件后另存为 UTF-8 文本。",
                 systemImage: "character.book.closed"
             )
 
-            HStack {
+            ToolControlBar {
+                Text("转换方向")
+                    .font(.callout.weight(.medium))
                 Picker("转换方向", selection: $direction) {
                     ForEach(ChineseConversionDirection.allCases) { item in
                         Text(item.title).tag(item)
@@ -25,6 +27,12 @@ struct ChineseConversionView: View {
                 }
                 .pickerStyle(.segmented)
                 .frame(maxWidth: 360)
+                .labelsHidden()
+                .onChange(of: direction) {
+                    guard !sourceText.isEmpty else { return }
+                    convertedText = ChineseConversionService.convert(sourceText, direction: direction)
+                    showStatus("已按新方向转换")
+                }
 
                 Spacer()
 
@@ -37,6 +45,7 @@ struct ChineseConversionView: View {
                 Button("打开 TXT…", systemImage: "folder") {
                     openTextFile()
                 }
+                .keyboardShortcut("o", modifiers: .command)
             }
 
             HSplitView {
@@ -56,13 +65,14 @@ struct ChineseConversionView: View {
                 .frame(minWidth: 300)
             }
 
-            HStack {
+            ToolControlBar {
                 Button("转换", systemImage: "arrow.left.arrow.right") {
                     convertedText = ChineseConversionService.convert(sourceText, direction: direction)
                     showStatus("转换完成")
                 }
-                .buttonStyle(.borderedProminent)
+                .appPrimaryActionStyle()
                 .disabled(sourceText.isEmpty)
+                .keyboardShortcut(.return, modifiers: .command)
 
                 Button("交换内容", systemImage: "arrow.triangle.2.circlepath") {
                     swap(&sourceText, &convertedText)
@@ -83,12 +93,13 @@ struct ChineseConversionView: View {
                     saveTextFile()
                 }
                 .disabled(convertedText.isEmpty)
+                .keyboardShortcut("s", modifiers: .command)
 
                 Spacer()
                 StatusMessageView(message: statusMessage, isError: hasError)
             }
         }
-        .padding(24)
+        .toolPageStyle()
     }
 
     private func openTextFile() {

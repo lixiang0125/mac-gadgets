@@ -10,7 +10,7 @@ struct JSONDiffView: View {
     @State private var hasError = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: AppTheme.pageSpacing) {
             ToolHeader(
                 title: "JSON 对比",
                 description: "先格式化两侧 JSON，再按行对齐并高亮新增、删除和修改内容。",
@@ -23,10 +23,11 @@ struct JSONDiffView: View {
             }
             .frame(minHeight: 190, idealHeight: 230, maxHeight: 300)
 
-            HStack {
+            ToolControlBar {
                 Button("格式化并对比", systemImage: "arrow.left.arrow.right") { compareJSON() }
-                    .buttonStyle(.borderedProminent)
+                    .appPrimaryActionStyle()
                     .disabled(leftText.isEmpty || rightText.isEmpty)
+                    .keyboardShortcut(.return, modifiers: .command)
                 Button("交换两侧", systemImage: "arrow.triangle.2.circlepath") {
                     swap(&leftText, &rightText)
                     diffResult = nil
@@ -44,19 +45,10 @@ struct JSONDiffView: View {
                 StatusMessageView(message: statusMessage, isError: hasError)
             }
 
-            GroupBox {
-                if let diffResult {
-                    JSONDiffResultView(result: diffResult)
-                } else {
-                    ContentUnavailableView(
-                        "等待对比",
-                        systemImage: "arrow.left.arrow.right",
-                        description: Text("输入或打开两个 JSON，然后点击“格式化并对比”。")
-                    )
-                }
-            } label: {
+            VStack(alignment: .leading, spacing: 8) {
                 HStack {
                     Text("差异结果")
+                        .font(.headline)
                     Spacer()
                     if let result = diffResult, !result.isIdentical {
                         HStack(spacing: 12) {
@@ -67,9 +59,21 @@ struct JSONDiffView: View {
                         .font(.caption)
                     }
                 }
+
+                if let diffResult {
+                    JSONDiffResultView(result: diffResult)
+                } else {
+                    ContentUnavailableView(
+                        "等待对比",
+                        systemImage: "arrow.left.arrow.right",
+                        description: Text("输入或打开两个 JSON，然后点击“格式化并对比”。")
+                    )
+                }
             }
+            .padding(12)
+            .workspaceSurface()
         }
-        .padding(24)
+        .toolPageStyle()
     }
 
     private enum InputSide { case left, right }

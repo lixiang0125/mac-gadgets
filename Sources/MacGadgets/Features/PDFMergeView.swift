@@ -12,15 +12,16 @@ struct PDFMergeView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
+        VStack(alignment: .leading, spacing: AppTheme.pageSpacing) {
             ToolHeader(
                 title: "多 PDF 文件合并",
                 description: "添加多个 PDF，调整顺序后合并为一个新文件。",
                 systemImage: "doc.on.doc"
             )
 
-            HStack {
+            ToolControlBar {
                 Button("添加 PDF…", systemImage: "plus") { addFiles() }
+                    .keyboardShortcut("o", modifiers: .command)
                 Button("移除", systemImage: "minus") { removeSelected() }
                     .disabled(selectedFile == nil)
                 Button("清空", systemImage: "trash") {
@@ -32,6 +33,7 @@ struct PDFMergeView: View {
 
                 Spacer()
                 Text("\(files.count) 个文件 · 共 \(totalPages) 页")
+                    .font(.callout.monospacedDigit())
                     .foregroundStyle(.secondary)
             }
 
@@ -40,7 +42,7 @@ struct PDFMergeView: View {
                     ForEach(Array(files.enumerated()), id: \.element) { index, url in
                         HStack(spacing: 10) {
                             Image(systemName: "doc.richtext")
-                                .foregroundStyle(.red)
+                                .foregroundStyle(AppTheme.accent)
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(url.lastPathComponent)
                                     .lineLimit(1)
@@ -56,16 +58,18 @@ struct PDFMergeView: View {
                         .tag(url)
                         .padding(.vertical, 3)
                     }
-                }
-                .overlay {
-                    if files.isEmpty {
-                        ContentUnavailableView(
-                            "尚未添加 PDF",
-                            systemImage: "doc.badge.plus",
-                            description: Text("点击“添加 PDF”选择两个或更多文件。")
-                        )
+                    .onMove { offsets, destination in
+                        files.move(fromOffsets: offsets, toOffset: destination)
                     }
                 }
+                .workspaceSurface()
+                .fileDropTarget(
+                    isEmpty: files.isEmpty,
+                    title: "拖入 PDF 开始",
+                    description: "也可以点击“添加 PDF”，支持拖动行或使用右侧按钮排序。",
+                    systemImage: "doc.badge.plus",
+                    onDrop: addDroppedPDFs
+                )
 
                 FileOrderButtons(
                     canMoveUp: selectedIndex.map { $0 > 0 } ?? false,
@@ -75,15 +79,16 @@ struct PDFMergeView: View {
                 )
             }
 
-            HStack {
+            ToolControlBar {
                 Button("合并并保存…", systemImage: "square.and.arrow.down") { mergeFiles() }
-                    .buttonStyle(.borderedProminent)
+                    .appPrimaryActionStyle()
                     .disabled(files.count < 2)
+                    .keyboardShortcut("s", modifiers: .command)
                 Spacer()
                 StatusMessageView(message: statusMessage, isError: hasError)
             }
         }
-        .padding(24)
+        .toolPageStyle()
     }
 
     private var selectedIndex: Int? {
@@ -97,11 +102,18 @@ struct PDFMergeView: View {
             types: [.pdf],
             allowsMultipleSelection: true
         )
-        for url in urls where !files.contains(url) {
-            files.append(url)
+        addDroppedPDFs(urls)
+    }
+
+    private func addDroppedPDFs(_ urls: [URL]) {
+        let pdfs = urls.filter { $0.pathExtension.lowercased() == "pdf" }
+        for url in pdfs where !files.contains(url) { files.append(url) }
+        if selectedFile == nil { selectedFile = pdfs.first }
+        if pdfs.isEmpty && !urls.isEmpty {
+            showStatus("仅支持 PDF 文件", isError: true)
+        } else {
+            statusMessage = ""
         }
-        if selectedFile == nil { selectedFile = urls.first }
-        statusMessage = ""
     }
 
     private func removeSelected() {
