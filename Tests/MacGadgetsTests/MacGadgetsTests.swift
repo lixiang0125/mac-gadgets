@@ -24,6 +24,49 @@ final class MacGadgetsTests: XCTestCase {
         XCTAssertEqual(Set(ToolKind.pinyinSorted.map(\.pinyinInitial)), Set(["D", "J", "Z"]))
     }
 
+    func testClipboardHistoryIsNewestFirstDeduplicatedAndLimitedTo100() throws {
+        var entries: [ClipboardHistoryEntry] = []
+        let startDate = Date(timeIntervalSince1970: 1_700_000_000)
+
+        for index in 0...100 {
+            entries = ClipboardHistoryService.adding(
+                "记录 \(index)",
+                at: startDate.addingTimeInterval(TimeInterval(index)),
+                to: entries
+            )
+        }
+
+        XCTAssertEqual(entries.count, 100)
+        XCTAssertEqual(entries.first?.text, "记录 100")
+        XCTAssertEqual(entries.last?.text, "记录 1")
+
+        let existingID = try XCTUnwrap(entries.first { $0.text == "记录 50" }?.id)
+        let newestDate = startDate.addingTimeInterval(200)
+        entries = ClipboardHistoryService.adding("记录 50", at: newestDate, to: entries)
+
+        XCTAssertEqual(entries.count, 100)
+        XCTAssertEqual(entries.first?.id, existingID)
+        XCTAssertEqual(entries.first?.createdAt, newestDate)
+        XCTAssertEqual(entries.filter { $0.text == "记录 50" }.count, 1)
+    }
+
+    func testClipboardHistoryPersistenceRoundTrip() throws {
+        let url = temporaryDirectory.appendingPathComponent("ClipboardHistory.json")
+        let entries = [
+            ClipboardHistoryEntry(
+                text: "第二条",
+                createdAt: Date(timeIntervalSince1970: 1_700_000_002)
+            ),
+            ClipboardHistoryEntry(
+                text: "第一条",
+                createdAt: Date(timeIntervalSince1970: 1_700_000_001)
+            )
+        ]
+
+        try ClipboardHistoryPersistence.save(entries, to: url)
+        XCTAssertEqual(try ClipboardHistoryPersistence.load(from: url), entries)
+    }
+
     func testChineseConversionInBothDirections() {
         let traditional = ChineseConversionService.convert(
             "汉语转换与软件开发",

@@ -130,6 +130,8 @@ struct ContentView: View {
         } detail: {
             Group {
                 switch selectedTool {
+                case .clipboardHistory:
+                    ClipboardHistoryView()
                 case .chineseConversion:
                     ChineseConversionView()
                 case .pdfMerge:
