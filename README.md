@@ -42,12 +42,3 @@ open "dist/Mac Gadgets.app"
 ```
 
 脚本会生成本机临时签名的 `dist/Mac Gadgets.app`。正式分发前仍需配置开发者签名、公证和应用图标。
-
-## 后续绑定 GitHub
-
-恢复 GitHub 连接后，在项目目录执行：
-
-```bash
-git remote add origin https://github.com/lixiang0125/mac-gadgets.git
-git push -u origin main
-```
