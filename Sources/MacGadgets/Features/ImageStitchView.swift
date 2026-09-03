@@ -91,6 +91,7 @@ struct ImageStitchView: View {
                     )
                 }
                 .frame(minWidth: 330)
+                .padding(.trailing, AppTheme.splitPaneSpacing / 2)
 
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
@@ -126,6 +127,7 @@ struct ImageStitchView: View {
                 .padding(12)
                 .workspaceSurface()
                 .frame(minWidth: 330)
+                .padding(.leading, AppTheme.splitPaneSpacing / 2)
             }
 
             ToolControlBar {

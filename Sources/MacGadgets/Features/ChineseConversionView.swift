@@ -55,6 +55,7 @@ struct ChineseConversionView: View {
                     placeholder: "在这里粘贴或输入中文文本…"
                 )
                 .frame(minWidth: 300)
+                .padding(.trailing, AppTheme.splitPaneSpacing / 2)
 
                 EditorPane(
                     title: "转换结果",
@@ -63,6 +64,7 @@ struct ChineseConversionView: View {
                     isEditable: false
                 )
                 .frame(minWidth: 300)
+                .padding(.leading, AppTheme.splitPaneSpacing / 2)
             }
 
             ToolControlBar {

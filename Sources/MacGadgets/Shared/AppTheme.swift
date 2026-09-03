@@ -9,6 +9,7 @@ enum AppTheme {
     static let border = Color(nsColor: .separatorColor).opacity(0.72)
     static let surfaceRadius: CGFloat = 12
     static let pageSpacing: CGFloat = 18
+    static let splitPaneSpacing: CGFloat = 12
 }
 
 enum AppAppearance: String, CaseIterable, Identifiable {

@@ -19,7 +19,9 @@ struct JSONDiffView: View {
 
             HSplitView {
                 jsonInputPane(title: "JSON A", text: $leftText, side: .left)
+                    .padding(.trailing, AppTheme.splitPaneSpacing / 2)
                 jsonInputPane(title: "JSON B", text: $rightText, side: .right)
+                    .padding(.leading, AppTheme.splitPaneSpacing / 2)
             }
             .frame(minHeight: 190, idealHeight: 230, maxHeight: 300)
 
