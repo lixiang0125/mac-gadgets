@@ -255,7 +255,7 @@ struct ToolControlBar<Content: View>: View {
         HStack(spacing: 10) {
             content
         }
-        .controlSize(.regular)
+        .controlSize(.large)
         .padding(10)
         .appGlassSurface()
     }
@@ -271,7 +271,11 @@ struct FileOrderButtons: View {
         VStack(spacing: 2) {
             Button(action: moveUp) {
                 Image(systemName: "chevron.up")
-                    .frame(width: 24, height: 24)
+                    .frame(
+                        width: AppTheme.compactControlHitSize,
+                        height: AppTheme.compactControlHitSize
+                    )
+                    .contentShape(Rectangle())
             }
             .disabled(!canMoveUp)
             .help("上移")
@@ -280,7 +284,11 @@ struct FileOrderButtons: View {
 
             Button(action: moveDown) {
                 Image(systemName: "chevron.down")
-                    .frame(width: 24, height: 24)
+                    .frame(
+                        width: AppTheme.compactControlHitSize,
+                        height: AppTheme.compactControlHitSize
+                    )
+                    .contentShape(Rectangle())
             }
             .disabled(!canMoveDown)
             .help("下移")

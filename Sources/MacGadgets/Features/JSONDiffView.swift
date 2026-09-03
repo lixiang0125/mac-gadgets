@@ -87,6 +87,7 @@ struct JSONDiffView: View {
                 Spacer()
                 Button("打开…", systemImage: "folder") { openFile(for: side) }
                     .labelStyle(.titleAndIcon)
+                    .controlSize(.large)
             }
             EditorPane(title: "", text: text, placeholder: "粘贴 JSON…")
         }

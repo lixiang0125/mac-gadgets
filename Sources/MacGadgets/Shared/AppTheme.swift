@@ -10,6 +10,7 @@ enum AppTheme {
     static let surfaceRadius: CGFloat = 12
     static let pageSpacing: CGFloat = 18
     static let splitPaneSpacing: CGFloat = 12
+    static let compactControlHitSize: CGFloat = 30
 }
 
 enum AppAppearance: String, CaseIterable, Identifiable {

@@ -172,6 +172,7 @@ struct ImagePDFConversionView: View {
                     Button(pdfFile == nil ? "选择 PDF…" : "更换 PDF…") {
                         selectPDF()
                     }
+                    .controlSize(.large)
                     .keyboardShortcut("o", modifiers: .command)
                 }
                 .padding(16)

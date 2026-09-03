@@ -65,6 +65,11 @@ struct ContentView: View {
                         } label: {
                             Image(systemName: "xmark.circle.fill")
                                 .foregroundStyle(.tertiary)
+                                .frame(
+                                    width: AppTheme.compactControlHitSize,
+                                    height: AppTheme.compactControlHitSize
+                                )
+                                .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
                         .help("清除搜索")
@@ -103,6 +108,11 @@ struct ContentView: View {
                     } label: {
                         Label("外观", systemImage: appearance.systemImage)
                             .labelStyle(.iconOnly)
+                            .frame(
+                                width: AppTheme.compactControlHitSize,
+                                height: AppTheme.compactControlHitSize
+                            )
+                            .contentShape(Rectangle())
                     }
                     .menuStyle(.borderlessButton)
                     .fixedSize()
@@ -173,7 +183,8 @@ private struct ToolSidebarRow: View {
                     .lineLimit(1)
             }
         }
-        .padding(.vertical, 4)
+        .padding(.horizontal, 4)
+        .padding(.vertical, 6)
         .contentShape(Rectangle())
     }
 }
