@@ -6,10 +6,10 @@ enum ChineseConversionDirection: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
-    var title: String {
+    var titleKey: String {
         switch self {
-        case .simplifiedToTraditional: "简体 → 繁体"
-        case .traditionalToSimplified: "繁体 → 简体"
+        case .simplifiedToTraditional: "chinese.direction.simplifiedToTraditional"
+        case .traditionalToSimplified: "chinese.direction.traditionalToSimplified"
         }
     }
 

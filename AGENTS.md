@@ -16,7 +16,8 @@ The deployment target is macOS 14. The project is currently built with Swift 6.2
 - `Sources/MacGadgets/Services`: testable file and data transformations; keep non-UI logic here.
 - `Sources/MacGadgets/Shared`: reusable views, file panels, theme, and compatibility helpers.
 - `Sources/MacGadgets/Models/ToolKind.swift`: sidebar metadata and pinyin sorting information.
-- `Tests/MacGadgetsTests`: service, ordering, and file round-trip coverage.
+- `Tests`: one focused suite per tool, shared isolated fixtures, and an all-tool SwiftUI layout smoke suite.
+- `locale`: key-based JSON UI copy; `zh-CN.json` and `en.json` must always contain the same keys.
 - `Packaging`: bundle metadata and the 1024 x 1024 app-icon master.
 - `scripts/build-app.sh`: reproducible local `.app` packaging and ad-hoc signing.
 - `scripts/build-release.sh`: reproducible latest-DMG packaging; reads the version from `Packaging/Info.plist`.
@@ -59,6 +60,8 @@ codesign --verify --deep --strict "dist/Mac Gadgets.app"
 ./scripts/build-release.sh
 hdiutil verify "release/Mac-Gadgets-latest.dmg"
 ```
+
+When a feature, service, or shared component changes, update and run its matching `Tests/*Tests.swift` suite during development with `swift test --filter <SuiteName>`. Run the complete `swift test` suite before handoff even when the focused suite passes. Tests that write files must use a unique temporary directory; clipboard tests must inject both a temporary storage URL and a uniquely named `NSPasteboard`, disable automatic monitoring, and never touch `NSPasteboard.general` or the real Application Support history.
 
 For UI changes, also launch the packaged app and inspect at least light and dark appearance. For packaging or icon changes, verify `Contents/Info.plist`, the packaged resources, and the result shown by Finder rather than trusting source files alone.
 
@@ -106,5 +109,8 @@ When maintaining this file:
 - Keep app-owned interactive controls consistently padded: controls inside `ToolControlBar` and standalone text buttons use the native large control size, icon-only controls use at least `AppTheme.compactControlHitSize` in both dimensions, and sidebar tabs include explicit horizontal and vertical padding. Do not simulate button padding with outer view padding because it does not enlarge the styled button surface.
 - Keep clipboard monitoring owned by the app lifecycle rather than the clipboard screen so copying is captured while another tool is selected. Poll `NSPasteboard.changeCount`, store runtime history under the user's Application Support directory, and inject temporary storage URLs in tests; clipboard history must never live in the repository or application bundle.
 - Clipboard history is newest-first, limited to 100 unique texts, and exact duplicate text moves its existing entry to the front with an updated timestamp. Keep row actions in one fixed-height, vertically centered group so text and icon-only controls align.
+- Keep test suites split by tool and pair service assertions with the all-tool SwiftUI layout smoke test. Validate actual output content, ordering, limits, and failure paths rather than relying only on successful return values or file existence.
+- Keep all user-facing app copy in `locale/zh-CN.json` and `locale/en.json`; production Swift code references localization keys instead of embedding Chinese or English UI strings. Add the same key to both files, run `LocalizationTests`, and exercise every tool view in both languages.
+- Keep `README.md` as the default Chinese document and `README.en.md` as its English counterpart. Both files must use the same section structure, feature list, commands, and release link, with a language switch at the top.
 - Keep the public DMG download at `release/Mac-Gadgets-latest.dmg`; its stable name lets the README link survive version changes. Treat `Packaging/Info.plist` as the release-version source of truth.
 - A release DMG must contain the signed `Mac Gadgets.app` and an `Applications` symlink. Mount it read-only and verify both entries plus the embedded app signature before handoff.

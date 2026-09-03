@@ -1,6 +1,8 @@
 # Mac Gadgets
 
-一个原生 SwiftUI macOS 便捷工具箱。所有文本与文件均在本机处理，不会上传到网络。
+[中文](README.md) | [English](README.en.md)
+
+一个支持中文与 English 界面切换的原生 SwiftUI macOS 便捷工具箱。所有文本与文件均在本机处理，不会上传到网络。
 
 ## 下载最新版
 
@@ -23,6 +25,7 @@
 ## 交互体验
 
 - 统一的原生 SwiftUI 页面层级，可自动适配浅色和深色外观，也可在侧边栏底部手动切换。
+- 每个工具右上角都可在中文与 English 之间即时切换，语言选择会在本机保存。
 - 在 macOS 26 上使用原生 Liquid Glass 操作栏、搜索框和主操作按钮；旧版系统及“减少透明度”模式会自动降级为清晰的系统材质或实色表面。
 - 配套的蓝色玻璃 `MG` 字母组合图标会在打包时自动加入透明安全边距和连续圆角，并生成完整的 macOS 多尺寸图标资源。
 - PDF 与图片列表支持直接拖放文件、拖动行排序，以及按钮辅助排序。
@@ -49,7 +52,19 @@ swift run MacGadgets
 swift test
 ```
 
-测试覆盖剪贴板历史、简繁转换、文本文件、PDF 合并、图片/PDF 互转、横竖图片拼接、JSON 格式化、JSON Diff 和拼音排序。
+测试按工具直接拆分在 `Tests`，覆盖正常流程、边界条件、失败路径、文件往返及全部工具页面的 SwiftUI 布局。开发时可只运行相关套件，例如：
+
+```bash
+swift test --filter ClipboardHistoryTests
+swift test --filter JSONServiceTests
+swift test --filter PDFServiceTests
+```
+
+提交前仍需运行完整的 `swift test`。所有文件测试使用独立临时目录，剪贴板测试使用专用 pasteboard 和临时存储地址，不会读取或修改真实剪贴板历史。
+
+## 本地化
+
+所有界面文案以 key 形式维护在根目录的 `locale/zh-CN.json` 与 `locale/en.json`。增加或修改文案时必须同步更新两个文件；`LocalizationTests` 会校验两种语言的 key 集合和页面加载。
 
 ## 生成可双击运行的 App
 

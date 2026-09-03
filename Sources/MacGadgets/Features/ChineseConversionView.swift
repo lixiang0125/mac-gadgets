@@ -2,6 +2,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct ChineseConversionView: View {
+    @EnvironmentObject private var localization: LocalizationStore
     @State private var direction: ChineseConversionDirection = .simplifiedToTraditional
     @State private var sourceText = ""
     @State private var convertedText = ""
@@ -12,17 +13,17 @@ struct ChineseConversionView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: AppTheme.pageSpacing) {
             ToolHeader(
-                title: "中文简繁转换",
-                description: "转换输入文本，或读取 TXT 文件后另存为 UTF-8 文本。",
+                titleKey: "tool.chineseConversion.title",
+                descriptionKey: "tool.chineseConversion.description",
                 systemImage: "character.book.closed"
             )
 
             ToolControlBar {
-                Text("转换方向")
+                Text(localization.text("chinese.direction.label"))
                     .font(.callout.weight(.medium))
-                Picker("转换方向", selection: $direction) {
+                Picker(localization.text("chinese.direction.label"), selection: $direction) {
                     ForEach(ChineseConversionDirection.allCases) { item in
-                        Text(item.title).tag(item)
+                        Text(localization.text(item.titleKey)).tag(item)
                     }
                 }
                 .pickerStyle(.segmented)
@@ -31,7 +32,7 @@ struct ChineseConversionView: View {
                 .onChange(of: direction) {
                     guard !sourceText.isEmpty else { return }
                     convertedText = ChineseConversionService.convert(sourceText, direction: direction)
-                    showStatus("已按新方向转换")
+                    showStatus(localization.text("chinese.status.directionChanged"))
                 }
 
                 Spacer()
@@ -42,7 +43,7 @@ struct ChineseConversionView: View {
                         .lineLimit(1)
                 }
 
-                Button("打开 TXT…", systemImage: "folder") {
+                Button(localization.text("chinese.openTXT"), systemImage: "folder") {
                     openTextFile()
                 }
                 .keyboardShortcut("o", modifiers: .command)
@@ -50,17 +51,17 @@ struct ChineseConversionView: View {
 
             HSplitView {
                 EditorPane(
-                    title: "原文",
+                    title: localization.text("chinese.source.title"),
                     text: $sourceText,
-                    placeholder: "在这里粘贴或输入中文文本…"
+                    placeholder: localization.text("chinese.source.placeholder")
                 )
                 .frame(minWidth: 300)
                 .padding(.trailing, AppTheme.splitPaneSpacing / 2)
 
                 EditorPane(
-                    title: "转换结果",
+                    title: localization.text("chinese.result.title"),
                     text: $convertedText,
-                    placeholder: "转换结果会显示在这里",
+                    placeholder: localization.text("chinese.result.placeholder"),
                     isEditable: false
                 )
                 .frame(minWidth: 300)
@@ -68,15 +69,15 @@ struct ChineseConversionView: View {
             }
 
             ToolControlBar {
-                Button("转换", systemImage: "arrow.left.arrow.right") {
+                Button(localization.text("chinese.convert"), systemImage: "arrow.left.arrow.right") {
                     convertedText = ChineseConversionService.convert(sourceText, direction: direction)
-                    showStatus("转换完成")
+                    showStatus(localization.text("chinese.status.converted"))
                 }
                 .appPrimaryActionStyle()
                 .disabled(sourceText.isEmpty)
                 .keyboardShortcut(.return, modifiers: .command)
 
-                Button("交换内容", systemImage: "arrow.triangle.2.circlepath") {
+                Button(localization.text("chinese.swap"), systemImage: "arrow.triangle.2.circlepath") {
                     swap(&sourceText, &convertedText)
                     direction = direction == .simplifiedToTraditional
                         ? .traditionalToSimplified
@@ -85,13 +86,13 @@ struct ChineseConversionView: View {
                 }
                 .disabled(convertedText.isEmpty)
 
-                Button("复制结果", systemImage: "doc.on.doc") {
+                Button(localization.text("chinese.copyResult"), systemImage: "doc.on.doc") {
                     PasteboardHelper.copy(convertedText)
-                    showStatus("已复制到剪贴板")
+                    showStatus(localization.text("common.status.copied"))
                 }
                 .disabled(convertedText.isEmpty)
 
-                Button("保存 TXT…", systemImage: "square.and.arrow.down") {
+                Button(localization.text("chinese.saveTXT"), systemImage: "square.and.arrow.down") {
                     saveTextFile()
                 }
                 .disabled(convertedText.isEmpty)
@@ -102,11 +103,12 @@ struct ChineseConversionView: View {
             }
         }
         .toolPageStyle()
+        .onChange(of: localization.language) { statusMessage = "" }
     }
 
     private func openTextFile() {
         guard let url = FilePanels.openFiles(
-            title: "选择 TXT 文件",
+            title: localization.text("chinese.panel.selectTXT"),
             types: [.plainText],
             allowsMultipleSelection: false
         ).first else { return }
@@ -115,27 +117,34 @@ struct ChineseConversionView: View {
             sourceText = try ChineseConversionService.readTextFile(at: url)
             convertedText = ""
             loadedFileName = url.lastPathComponent
-            showStatus("已读取 \(url.lastPathComponent)")
+            showStatus(localization.text("common.status.read", url.lastPathComponent))
         } catch {
-            showStatus("读取失败：\(error.localizedDescription)", isError: true)
+            showStatus(
+                localization.text("common.status.readFailed", localization.errorMessage(for: error)),
+                isError: true
+            )
         }
     }
 
     private func saveTextFile() {
         let sourceBaseName = loadedFileName.isEmpty
-            ? "转换结果"
-            : URL(fileURLWithPath: loadedFileName).deletingPathExtension().lastPathComponent + "-转换结果"
+            ? localization.text("chinese.file.resultBaseName")
+            : URL(fileURLWithPath: loadedFileName).deletingPathExtension().lastPathComponent
+                + localization.text("chinese.file.resultSuffix")
         guard let url = FilePanels.saveFile(
-            title: "保存转换结果",
+            title: localization.text("chinese.panel.saveResult"),
             suggestedName: sourceBaseName + ".txt",
             type: .plainText
         ) else { return }
 
         do {
             try ChineseConversionService.writeTextFile(convertedText, to: url)
-            showStatus("已保存到 \(url.lastPathComponent)")
+            showStatus(localization.text("chinese.status.saved", url.lastPathComponent))
         } catch {
-            showStatus("保存失败：\(error.localizedDescription)", isError: true)
+            showStatus(
+                localization.text("common.status.saveFailed", localization.errorMessage(for: error)),
+                isError: true
+            )
         }
     }
 

@@ -1,15 +1,17 @@
 import Foundation
 
-enum JSONServiceError: LocalizedError {
+enum JSONServiceError: LocalizedError, LocalizedMessageProviding {
     case emptyInput
     case cannotEncode
 
-    var errorDescription: String? {
+    var localizationKey: String {
         switch self {
-        case .emptyInput: "JSON 内容为空"
-        case .cannotEncode: "无法生成 JSON 文本"
+        case .emptyInput: "error.json.emptyInput"
+        case .cannotEncode: "error.json.cannotEncode"
         }
     }
+
+    var errorDescription: String? { localizationKey }
 }
 
 enum JSONService {

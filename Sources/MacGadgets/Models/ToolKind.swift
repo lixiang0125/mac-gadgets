@@ -11,27 +11,27 @@ enum ToolKind: String, CaseIterable, Identifiable, Hashable {
 
     var id: String { rawValue }
 
-    var title: String {
+    var titleKey: String {
         switch self {
-        case .clipboardHistory: "剪贴板历史"
-        case .pdfMerge: "多 PDF 文件合并"
-        case .imageStitch: "多图片拼成长图"
-        case .imagePDFConversion: "多图片与 PDF 互转"
-        case .jsonDiff: "JSON 对比"
-        case .jsonFormatter: "JSON 格式化"
-        case .chineseConversion: "中文简繁转换"
+        case .clipboardHistory: "tool.clipboard.title"
+        case .pdfMerge: "tool.pdfMerge.title"
+        case .imageStitch: "tool.imageStitch.title"
+        case .imagePDFConversion: "tool.imagePDF.title"
+        case .jsonDiff: "tool.jsonDiff.title"
+        case .jsonFormatter: "tool.jsonFormatter.title"
+        case .chineseConversion: "tool.chineseConversion.title"
         }
     }
 
-    var subtitle: String {
+    var subtitleKey: String {
         switch self {
-        case .clipboardHistory: "自动保存最近 100 条文本"
-        case .pdfMerge: "合并并调整 PDF 顺序"
-        case .imageStitch: "横向或竖向拼接图片"
-        case .imagePDFConversion: "图片生成 PDF，PDF 按页导图"
-        case .jsonDiff: "逐行高亮两个 JSON 的差异"
-        case .jsonFormatter: "校验并美化 JSON 文本"
-        case .chineseConversion: "文本与 TXT 文件互转"
+        case .clipboardHistory: "tool.clipboard.subtitle"
+        case .pdfMerge: "tool.pdfMerge.subtitle"
+        case .imageStitch: "tool.imageStitch.subtitle"
+        case .imagePDFConversion: "tool.imagePDF.subtitle"
+        case .jsonDiff: "tool.jsonDiff.subtitle"
+        case .jsonFormatter: "tool.jsonFormatter.subtitle"
+        case .chineseConversion: "tool.chineseConversion.subtitle"
         }
     }
 
@@ -63,9 +63,24 @@ enum ToolKind: String, CaseIterable, Identifiable, Hashable {
         String(pinyinSortKey.prefix(1)).uppercased()
     }
 
+    func matches(searchText: String, localize: (String) -> String) -> Bool {
+        let needle = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !needle.isEmpty else { return true }
+        return localize(titleKey).lowercased().contains(needle)
+            || localize(subtitleKey).lowercased().contains(needle)
+            || pinyinSortKey.contains(needle)
+    }
+
     static var pinyinSorted: [ToolKind] {
         allCases.sorted {
             $0.pinyinSortKey.localizedStandardCompare($1.pinyinSortKey) == .orderedAscending
         }
+    }
+
+    static func filtered(
+        matching searchText: String,
+        localize: (String) -> String
+    ) -> [ToolKind] {
+        pinyinSorted.filter { $0.matches(searchText: searchText, localize: localize) }
     }
 }

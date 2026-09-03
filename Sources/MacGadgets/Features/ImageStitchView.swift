@@ -3,6 +3,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct ImageStitchView: View {
+    @EnvironmentObject private var localization: LocalizationStore
     @State private var files: [URL] = []
     @State private var selectedFile: URL?
     @State private var direction: ImageStitchDirection = .vertical
@@ -13,17 +14,17 @@ struct ImageStitchView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: AppTheme.pageSpacing) {
             ToolHeader(
-                title: "多图片拼成长图",
-                description: "按列表顺序横向或竖向拼接；较短边会居中对齐，透明区域会被保留。",
+                titleKey: "tool.imageStitch.title",
+                descriptionKey: "tool.imageStitch.description",
                 systemImage: "rectangle.3.group"
             )
 
             ToolControlBar {
-                Text("拼接方向")
+                Text(localization.text("imageStitch.direction.label"))
                     .font(.callout.weight(.medium))
-                Picker("拼接方向", selection: $direction) {
+                Picker(localization.text("imageStitch.direction.label"), selection: $direction) {
                     ForEach(ImageStitchDirection.allCases) { item in
-                        Label(item.title, systemImage: item.systemImage).tag(item)
+                        Label(localization.text(item.titleKey), systemImage: item.systemImage).tag(item)
                     }
                 }
                 .pickerStyle(.segmented)
@@ -32,11 +33,11 @@ struct ImageStitchView: View {
                 .onChange(of: direction) { previewImage = nil }
 
                 Spacer()
-                Button("添加图片…", systemImage: "plus") { addImages() }
+                Button(localization.text("imageStitch.addImages"), systemImage: "plus") { addImages() }
                     .keyboardShortcut("o", modifiers: .command)
-                Button("移除", systemImage: "minus") { removeSelected() }
+                Button(localization.text("common.remove"), systemImage: "minus") { removeSelected() }
                     .disabled(selectedFile == nil)
-                Button("清空", systemImage: "trash") {
+                Button(localization.text("common.clear"), systemImage: "trash") {
                     files.removeAll()
                     selectedFile = nil
                     previewImage = nil
@@ -77,8 +78,8 @@ struct ImageStitchView: View {
                     .workspaceSurface()
                     .fileDropTarget(
                         isEmpty: files.isEmpty,
-                        title: "拖入图片开始",
-                        description: "按列表从上到下排列，可拖动行或使用右侧按钮调整顺序。",
+                        title: localization.text("imageStitch.drop.title"),
+                        description: localization.text("imageStitch.drop.description"),
                         systemImage: "photo.stack",
                         onDrop: addDroppedImages
                     )
@@ -95,7 +96,7 @@ struct ImageStitchView: View {
 
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
-                        Text("预览")
+                        Text(localization.text("imageStitch.preview.title"))
                             .font(.headline)
                         Spacer()
                         if let previewImage {
@@ -116,9 +117,9 @@ struct ImageStitchView: View {
                             }
                         } else {
                             ContentUnavailableView(
-                                "暂无预览",
+                                localization.text("imageStitch.preview.empty"),
                                 systemImage: direction.systemImage,
-                                description: Text("添加图片后点击“生成预览”。")
+                                description: Text(localization.text("imageStitch.preview.description"))
                             )
                         }
                     }
@@ -131,9 +132,13 @@ struct ImageStitchView: View {
             }
 
             ToolControlBar {
-                Button("生成预览", systemImage: "eye") { generatePreview() }
+                Button(localization.text("imageStitch.preview.generate"), systemImage: "eye") {
+                    generatePreview()
+                }
                     .disabled(files.isEmpty)
-                Button("保存长图…", systemImage: "square.and.arrow.down") { saveStitchedImage() }
+                Button(localization.text("imageStitch.save"), systemImage: "square.and.arrow.down") {
+                    saveStitchedImage()
+                }
                     .appPrimaryActionStyle()
                     .disabled(files.isEmpty)
                     .keyboardShortcut("s", modifiers: .command)
@@ -142,6 +147,7 @@ struct ImageStitchView: View {
             }
         }
         .toolPageStyle()
+        .onChange(of: localization.language) { statusMessage = "" }
     }
 
     private var selectedIndex: Int? {
@@ -151,7 +157,7 @@ struct ImageStitchView: View {
 
     private func addImages() {
         let urls = FilePanels.openFiles(
-            title: "选择要拼接的图片",
+            title: localization.text("imageStitch.panel.selectImages"),
             types: [.image],
             allowsMultipleSelection: true
         )
@@ -164,7 +170,7 @@ struct ImageStitchView: View {
         if selectedFile == nil { selectedFile = images.first }
         previewImage = nil
         if images.isEmpty && !urls.isEmpty {
-            showStatus("未找到可读取的图片", isError: true)
+            showStatus(localization.text("imageStitch.status.noReadableImages"), isError: true)
         } else {
             statusMessage = ""
         }
@@ -186,7 +192,9 @@ struct ImageStitchView: View {
     }
 
     private func dimensions(at url: URL) -> String {
-        guard let image = NSImage(contentsOf: url) else { return "无法读取" }
+        guard let image = NSImage(contentsOf: url) else {
+            return localization.text("common.unreadable")
+        }
         let size = ImageStitchService.pixelSize(of: image)
         return "\(Int(size.width)) × \(Int(size.height))"
     }
@@ -195,16 +203,26 @@ struct ImageStitchView: View {
         do {
             let result = try ImageStitchService.stitch(files, direction: direction)
             previewImage = NSImage(data: result.data)
-            showStatus("预览尺寸：\(Int(result.pixelSize.width)) × \(Int(result.pixelSize.height))")
+            showStatus(localization.text(
+                "imageStitch.status.previewSize",
+                Int64(result.pixelSize.width),
+                Int64(result.pixelSize.height)
+            ))
         } catch {
-            showStatus("预览失败：\(error.localizedDescription)", isError: true)
+            showStatus(
+                localization.text(
+                    "imageStitch.status.previewFailed",
+                    localization.errorMessage(for: error)
+                ),
+                isError: true
+            )
         }
     }
 
     private func saveStitchedImage() {
         guard let destination = FilePanels.saveFile(
-            title: "保存拼接长图",
-            suggestedName: "拼接长图.png",
+            title: localization.text("imageStitch.panel.save"),
+            suggestedName: localization.text("imageStitch.file.defaultName"),
             type: .png
         ) else { return }
 
@@ -212,9 +230,19 @@ struct ImageStitchView: View {
             let result = try ImageStitchService.stitch(files, direction: direction)
             try result.data.write(to: destination, options: .atomic)
             previewImage = NSImage(data: result.data)
-            showStatus("已保存 \(Int(result.pixelSize.width)) × \(Int(result.pixelSize.height)) 长图")
+            showStatus(localization.text(
+                "imageStitch.status.saved",
+                Int64(result.pixelSize.width),
+                Int64(result.pixelSize.height)
+            ))
         } catch {
-            showStatus("保存失败：\(error.localizedDescription)", isError: true)
+            showStatus(
+                localization.text(
+                    "common.status.saveFailed",
+                    localization.errorMessage(for: error)
+                ),
+                isError: true
+            )
         }
     }
 

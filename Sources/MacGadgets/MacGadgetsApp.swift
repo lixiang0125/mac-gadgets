@@ -3,11 +3,13 @@ import SwiftUI
 @main
 struct MacGadgetsApp: App {
     @StateObject private var clipboardHistoryStore = ClipboardHistoryStore()
+    @StateObject private var localizationStore = LocalizationStore()
 
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .environmentObject(clipboardHistoryStore)
+                .environmentObject(localizationStore)
                 .frame(minWidth: 1_020, minHeight: 680)
         }
         .windowStyle(.automatic)

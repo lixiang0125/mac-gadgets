@@ -18,7 +18,7 @@ let package = Package(
         .testTarget(
             name: "MacGadgetsTests",
             dependencies: ["MacGadgets"],
-            path: "Tests/MacGadgetsTests"
+            path: "Tests"
         )
     ]
 )

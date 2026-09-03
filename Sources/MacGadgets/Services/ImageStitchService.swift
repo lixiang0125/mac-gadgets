@@ -6,7 +6,11 @@ enum ImageStitchDirection: String, CaseIterable, Identifiable {
     case horizontal
 
     var id: String { rawValue }
-    var title: String { self == .vertical ? "竖向拼接" : "横向拼接" }
+    var titleKey: String {
+        self == .vertical
+            ? "imageStitch.direction.vertical"
+            : "imageStitch.direction.horizontal"
+    }
     var systemImage: String { self == .vertical ? "rectangle.split.1x2" : "rectangle.split.2x1" }
 }
 
@@ -15,21 +19,27 @@ struct StitchedImageResult {
     let pixelSize: CGSize
 }
 
-enum ImageStitchError: LocalizedError {
+enum ImageStitchError: LocalizedError, LocalizedMessageProviding {
     case noReadableImages
     case canvasTooLarge(width: Int, height: Int)
     case cannotCreateBitmap
     case cannotEncode
 
-    var errorDescription: String? {
+    var localizationKey: String {
         switch self {
-        case .noReadableImages: "没有可读取的图片"
-        case .canvasTooLarge(let width, let height):
-            "拼接结果过大（\(width) × \(height)），请减少图片数量或尺寸"
-        case .cannotCreateBitmap: "无法创建拼接画布"
-        case .cannotEncode: "无法编码 PNG 图片"
+        case .noReadableImages: "error.imageStitch.noReadableImages"
+        case .canvasTooLarge: "error.imageStitch.canvasTooLarge"
+        case .cannotCreateBitmap: "error.imageStitch.cannotCreateBitmap"
+        case .cannotEncode: "error.imageStitch.cannotEncode"
         }
     }
+
+    var localizationArguments: [CVarArg] {
+        guard case .canvasTooLarge(let width, let height) = self else { return [] }
+        return [Int64(width), Int64(height)]
+    }
+
+    var errorDescription: String? { localizationKey }
 }
 
 enum ImageStitchService {

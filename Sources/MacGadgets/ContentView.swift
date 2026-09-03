@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct ContentView: View {
+    @EnvironmentObject private var localization: LocalizationStore
     @State private var selectedTool: ToolKind? = .chineseConversion
     @State private var searchText = ""
     @AppStorage("appearance") private var appearanceRawValue = AppAppearance.system.rawValue
@@ -10,16 +11,7 @@ struct ContentView: View {
     }
 
     private var filteredTools: [ToolKind] {
-        guard !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            return ToolKind.pinyinSorted
-        }
-
-        let needle = searchText.lowercased()
-        return ToolKind.pinyinSorted.filter {
-            $0.title.lowercased().contains(needle)
-                || $0.subtitle.lowercased().contains(needle)
-                || $0.pinyinSortKey.contains(needle)
-        }
+        ToolKind.filtered(matching: searchText) { localization.text($0) }
     }
 
     private var groupedTools: [(initial: String, tools: [ToolKind])] {
@@ -42,9 +34,9 @@ struct ContentView: View {
                         )
 
                     VStack(alignment: .leading, spacing: 1) {
-                        Text("Mac Gadgets")
+                        Text(localization.text("app.name"))
                             .font(.headline)
-                        Text("\(ToolKind.allCases.count) 个本地工具")
+                        Text(localization.text("app.toolCount", Int64(ToolKind.allCases.count)))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -57,7 +49,11 @@ struct ContentView: View {
                 HStack(spacing: 8) {
                     Image(systemName: "magnifyingglass")
                         .foregroundStyle(.secondary)
-                    TextField("搜索工具", text: $searchText, prompt: Text("名称或拼音"))
+                    TextField(
+                        localization.text("app.search.title"),
+                        text: $searchText,
+                        prompt: Text(localization.text("app.search.placeholder"))
+                    )
                         .textFieldStyle(.plain)
                     if !searchText.isEmpty {
                         Button {
@@ -72,7 +68,7 @@ struct ContentView: View {
                                 .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
-                        .help("清除搜索")
+                        .help(localization.text("app.search.clear"))
                     }
                 }
                 .padding(.horizontal, 10)
@@ -94,19 +90,19 @@ struct ContentView: View {
                 .scrollContentBackground(.hidden)
 
                 HStack(spacing: 8) {
-                    Label("文件只在本机处理", systemImage: "lock.shield")
+                    Label(localization.text("app.localOnly"), systemImage: "lock.shield")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     Spacer()
                     Menu {
-                        Picker("外观", selection: $appearanceRawValue) {
+                        Picker(localization.text("appearance.title"), selection: $appearanceRawValue) {
                             ForEach(AppAppearance.allCases) { item in
-                                Label(item.title, systemImage: item.systemImage)
+                                Label(localization.text(item.titleKey), systemImage: item.systemImage)
                                     .tag(item.rawValue)
                             }
                         }
                     } label: {
-                        Label("外观", systemImage: appearance.systemImage)
+                        Label(localization.text("appearance.title"), systemImage: appearance.systemImage)
                             .labelStyle(.iconOnly)
                             .frame(
                                 width: AppTheme.compactControlHitSize,
@@ -116,9 +112,12 @@ struct ContentView: View {
                     }
                     .menuStyle(.borderlessButton)
                     .fixedSize()
-                    .help("外观：\(appearance.title)")
-                    .accessibilityLabel("外观")
-                    .accessibilityValue(appearance.title)
+                    .help(localization.text(
+                        "appearance.help",
+                        localization.text(appearance.titleKey)
+                    ))
+                    .accessibilityLabel(localization.text("appearance.title"))
+                    .accessibilityValue(localization.text(appearance.titleKey))
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 10)
@@ -146,21 +145,26 @@ struct ContentView: View {
                     JSONDiffView()
                 case nil:
                     ContentUnavailableView(
-                        "选择一个工具",
+                        localization.text("app.emptySelection.title"),
                         systemImage: "wrench.and.screwdriver",
-                        description: Text("从左侧列表中选择要使用的便捷工具。")
+                        description: Text(localization.text("app.emptySelection.description"))
                     )
                 }
             }
-            .navigationTitle(selectedTool?.title ?? "Mac Gadgets")
+            .navigationTitle(
+                selectedTool.map { localization.text($0.titleKey) }
+                    ?? localization.text("app.name")
+            )
         }
         .navigationSplitViewStyle(.balanced)
         .tint(AppTheme.accent)
         .preferredColorScheme(appearance.colorScheme)
+        .environment(\.locale, localization.language.locale)
     }
 }
 
 private struct ToolSidebarRow: View {
+    @EnvironmentObject private var localization: LocalizationStore
     let tool: ToolKind
     let isSelected: Bool
 
@@ -177,9 +181,9 @@ private struct ToolSidebarRow: View {
                 )
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(tool.title)
+                Text(localization.text(tool.titleKey))
                     .font(.body.weight(.medium))
-                Text(tool.subtitle)
+                Text(localization.text(tool.subtitleKey))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)

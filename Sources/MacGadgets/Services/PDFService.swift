@@ -2,20 +2,30 @@ import AppKit
 import Foundation
 import PDFKit
 
-enum PDFServiceError: LocalizedError {
+enum PDFServiceError: LocalizedError, LocalizedMessageProviding {
     case unreadablePDF(String)
     case emptyDocument
     case cannotWrite(String)
     case cannotRenderPage(Int)
 
-    var errorDescription: String? {
+    var localizationKey: String {
         switch self {
-        case .unreadablePDF(let name): "无法读取 PDF：\(name)"
-        case .emptyDocument: "没有可处理的 PDF 页面"
-        case .cannotWrite(let name): "无法写入文件：\(name)"
-        case .cannotRenderPage(let page): "无法渲染第 \(page) 页"
+        case .unreadablePDF: "error.pdf.unreadable"
+        case .emptyDocument: "error.pdf.emptyDocument"
+        case .cannotWrite: "error.pdf.cannotWrite"
+        case .cannotRenderPage: "error.pdf.cannotRenderPage"
         }
     }
+
+    var localizationArguments: [CVarArg] {
+        switch self {
+        case .unreadablePDF(let name), .cannotWrite(let name): [name]
+        case .cannotRenderPage(let page): [Int64(page)]
+        case .emptyDocument: []
+        }
+    }
+
+    var errorDescription: String? { localizationKey }
 }
 
 enum PDFService {

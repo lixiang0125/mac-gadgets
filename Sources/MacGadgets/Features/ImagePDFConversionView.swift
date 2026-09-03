@@ -8,14 +8,15 @@ struct ImagePDFConversionView: View {
         case pdfToImages
 
         var id: String { rawValue }
-        var title: String {
+        var titleKey: String {
             switch self {
-            case .imagesToPDF: "图片转 PDF"
-            case .pdfToImages: "PDF 转图片"
+            case .imagesToPDF: "imagePDF.mode.imagesToPDF"
+            case .pdfToImages: "imagePDF.mode.pdfToImages"
             }
         }
     }
 
+    @EnvironmentObject private var localization: LocalizationStore
     @State private var mode: Mode = .imagesToPDF
     @State private var imageFiles: [URL] = []
     @State private var selectedImageFile: URL?
@@ -27,17 +28,17 @@ struct ImagePDFConversionView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: AppTheme.pageSpacing) {
             ToolHeader(
-                title: "多图片与 PDF 互转",
-                description: "将多张图片按顺序生成 PDF，或把 PDF 的每一页导出为 PNG。",
+                titleKey: "tool.imagePDF.title",
+                descriptionKey: "tool.imagePDF.description",
                 systemImage: "photo.on.rectangle.angled"
             )
 
             ToolControlBar {
-                Text("转换模式")
+                Text(localization.text("imagePDF.mode.label"))
                     .font(.callout.weight(.medium))
-                Picker("转换模式", selection: $mode) {
+                Picker(localization.text("imagePDF.mode.label"), selection: $mode) {
                     ForEach(Mode.allCases) { item in
-                        Text(item.title).tag(item)
+                        Text(localization.text(item.titleKey)).tag(item)
                     }
                 }
                 .pickerStyle(.segmented)
@@ -47,7 +48,11 @@ struct ImagePDFConversionView: View {
                     statusMessage = ""
                 }
                 Spacer()
-                Text(mode == .imagesToPDF ? "每张图片生成一页" : "每页导出一张 PNG")
+                Text(localization.text(
+                    mode == .imagesToPDF
+                        ? "imagePDF.mode.imagesToPDFHint"
+                        : "imagePDF.mode.pdfToImagesHint"
+                ))
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }
@@ -63,14 +68,14 @@ struct ImagePDFConversionView: View {
 
             ToolControlBar {
                 if mode == .imagesToPDF {
-                    Button("生成并保存 PDF…", systemImage: "doc.badge.plus") {
+                    Button(localization.text("imagePDF.savePDF"), systemImage: "doc.badge.plus") {
                         saveImagesAsPDF()
                     }
                     .appPrimaryActionStyle()
                     .disabled(imageFiles.isEmpty)
                     .keyboardShortcut("s", modifiers: .command)
                 } else {
-                    Button("选择目录并导出…", systemImage: "photo.stack") {
+                    Button(localization.text("imagePDF.export"), systemImage: "photo.stack") {
                         exportPDFPages()
                     }
                     .appPrimaryActionStyle()
@@ -83,22 +88,23 @@ struct ImagePDFConversionView: View {
             }
         }
         .toolPageStyle()
+        .onChange(of: localization.language) { statusMessage = "" }
     }
 
     private var imagesToPDFContent: some View {
         VStack(spacing: 12) {
             ToolControlBar {
-                Button("添加图片…", systemImage: "plus") { addImages() }
+                Button(localization.text("imagePDF.addImages"), systemImage: "plus") { addImages() }
                     .keyboardShortcut("o", modifiers: .command)
-                Button("移除", systemImage: "minus") { removeSelectedImage() }
+                Button(localization.text("common.remove"), systemImage: "minus") { removeSelectedImage() }
                     .disabled(selectedImageFile == nil)
-                Button("清空", systemImage: "trash") {
+                Button(localization.text("common.clear"), systemImage: "trash") {
                     imageFiles.removeAll()
                     selectedImageFile = nil
                 }
                 .disabled(imageFiles.isEmpty)
                 Spacer()
-                Text("\(imageFiles.count) 张图片")
+                Text(localization.text("imagePDF.imageCount", Int64(imageFiles.count)))
                     .font(.callout.monospacedDigit())
                     .foregroundStyle(.secondary)
             }
@@ -135,8 +141,8 @@ struct ImagePDFConversionView: View {
                 .workspaceSurface()
                 .fileDropTarget(
                     isEmpty: imageFiles.isEmpty,
-                    title: "拖入图片开始",
-                    description: "支持 macOS 可读取的图片格式，可拖动行调整 PDF 页序。",
+                    title: localization.text("imagePDF.drop.title"),
+                    description: localization.text("imagePDF.drop.description"),
                     systemImage: "photo.badge.plus",
                     onDrop: addDroppedImages
                 )
@@ -158,18 +164,24 @@ struct ImagePDFConversionView: View {
                         .font(.system(size: 34))
                         .foregroundStyle(AppTheme.accent)
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(pdfFile?.lastPathComponent ?? "尚未选择 PDF")
+                        Text(pdfFile?.lastPathComponent ?? localization.text("imagePDF.noPDF"))
                             .font(.headline)
                         if let pdfFile, let count = PDFService.pageCount(at: pdfFile) {
-                            Text("共 \(count) 页，将导出 \(count) 张 PNG 图片")
+                            Text(localization.text(
+                                "imagePDF.pageSummary",
+                                Int64(count),
+                                Int64(count)
+                            ))
                                 .foregroundStyle(.secondary)
                         } else {
-                            Text("选择一个 PDF 文件，每一页会生成一张图片。")
+                            Text(localization.text("imagePDF.selectPDFDescription"))
                                 .foregroundStyle(.secondary)
                         }
                     }
                     Spacer()
-                    Button(pdfFile == nil ? "选择 PDF…" : "更换 PDF…") {
+                    Button(localization.text(
+                        pdfFile == nil ? "imagePDF.selectPDF" : "imagePDF.changePDF"
+                    )) {
                         selectPDF()
                     }
                     .controlSize(.large)
@@ -186,16 +198,16 @@ struct ImagePDFConversionView: View {
                 )
 
             ToolControlBar {
-                Text("导出清晰度")
+                Text(localization.text("imagePDF.quality.label"))
                     .font(.headline)
-                Picker("导出清晰度", selection: $renderScale) {
-                    Text("标准 1×").tag(CGFloat(1))
-                    Text("高清 2×").tag(CGFloat(2))
-                    Text("超清 3×").tag(CGFloat(3))
+                Picker(localization.text("imagePDF.quality.label"), selection: $renderScale) {
+                    Text(localization.text("imagePDF.quality.standard")).tag(CGFloat(1))
+                    Text(localization.text("imagePDF.quality.high")).tag(CGFloat(2))
+                    Text(localization.text("imagePDF.quality.ultra")).tag(CGFloat(3))
                 }
                 .labelsHidden()
                 .frame(width: 160)
-                Text("更高倍数会生成更大的图片文件。")
+                Text(localization.text("imagePDF.quality.hint"))
                     .foregroundStyle(.secondary)
                 Spacer()
             }
@@ -211,7 +223,7 @@ struct ImagePDFConversionView: View {
 
     private func addImages() {
         let urls = FilePanels.openFiles(
-            title: "选择图片",
+            title: localization.text("imagePDF.panel.selectImages"),
             types: [.image],
             allowsMultipleSelection: true
         )
@@ -223,7 +235,7 @@ struct ImagePDFConversionView: View {
         for url in images where !imageFiles.contains(url) { imageFiles.append(url) }
         if selectedImageFile == nil { selectedImageFile = images.first }
         if images.isEmpty && !urls.isEmpty {
-            showStatus("未找到可读取的图片", isError: true)
+            showStatus(localization.text("imagePDF.status.noReadableImages"), isError: true)
         } else {
             statusMessage = ""
         }
@@ -243,29 +255,41 @@ struct ImagePDFConversionView: View {
     }
 
     private func imageDimensions(at url: URL) -> String {
-        guard let image = NSImage(contentsOf: url) else { return "无法读取" }
+        guard let image = NSImage(contentsOf: url) else {
+            return localization.text("common.unreadable")
+        }
         let size = ImageStitchService.pixelSize(of: image)
         return "\(Int(size.width)) × \(Int(size.height))"
     }
 
     private func saveImagesAsPDF() {
         guard let destination = FilePanels.saveFile(
-            title: "保存 PDF",
-            suggestedName: "图片合集.pdf",
+            title: localization.text("imagePDF.panel.savePDF"),
+            suggestedName: localization.text("imagePDF.file.defaultPDFName"),
             type: .pdf
         ) else { return }
 
         do {
             let count = try PDFService.imagesToPDF(imageFiles, to: destination)
-            showStatus("已生成 \(count) 页 PDF：\(destination.lastPathComponent)")
+            showStatus(localization.text(
+                "imagePDF.status.generated",
+                Int64(count),
+                destination.lastPathComponent
+            ))
         } catch {
-            showStatus("生成失败：\(error.localizedDescription)", isError: true)
+            showStatus(
+                localization.text(
+                    "imagePDF.status.generateFailed",
+                    localization.errorMessage(for: error)
+                ),
+                isError: true
+            )
         }
     }
 
     private func selectPDF() {
         let urls = FilePanels.openFiles(
-            title: "选择 PDF",
+            title: localization.text("imagePDF.panel.selectPDF"),
             types: [.pdf],
             allowsMultipleSelection: false
         )
@@ -274,7 +298,9 @@ struct ImagePDFConversionView: View {
 
     private func selectDroppedPDF(_ urls: [URL]) {
         guard let url = urls.first(where: { $0.pathExtension.lowercased() == "pdf" }) else {
-            if !urls.isEmpty { showStatus("仅支持 PDF 文件", isError: true) }
+            if !urls.isEmpty {
+                showStatus(localization.text("imagePDF.status.onlyPDF"), isError: true)
+            }
             return
         }
         pdfFile = url
@@ -283,7 +309,9 @@ struct ImagePDFConversionView: View {
 
     private func exportPDFPages() {
         guard let pdfFile,
-              let directory = FilePanels.chooseDirectory(title: "选择图片输出目录") else { return }
+              let directory = FilePanels.chooseDirectory(
+                title: localization.text("imagePDF.panel.outputDirectory")
+              ) else { return }
 
         do {
             let files = try PDFService.pdfToPNGFiles(
@@ -291,10 +319,20 @@ struct ImagePDFConversionView: View {
                 outputDirectory: directory,
                 scale: renderScale
             )
-            showStatus("已导出 \(files.count) 张图片到 \(directory.lastPathComponent)")
+            showStatus(localization.text(
+                "imagePDF.status.exported",
+                Int64(files.count),
+                directory.lastPathComponent
+            ))
             NSWorkspace.shared.activateFileViewerSelecting(files)
         } catch {
-            showStatus("导出失败：\(error.localizedDescription)", isError: true)
+            showStatus(
+                localization.text(
+                    "imagePDF.status.exportFailed",
+                    localization.errorMessage(for: error)
+                ),
+                isError: true
+            )
         }
     }
 

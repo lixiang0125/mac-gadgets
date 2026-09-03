@@ -3,6 +3,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct JSONDiffView: View {
+    @EnvironmentObject private var localization: LocalizationStore
     @State private var leftText = ""
     @State private var rightText = ""
     @State private var diffResult: JSONDiffResult?
@@ -12,30 +13,40 @@ struct JSONDiffView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: AppTheme.pageSpacing) {
             ToolHeader(
-                title: "JSON 对比",
-                description: "先格式化两侧 JSON，再按行对齐并高亮新增、删除和修改内容。",
+                titleKey: "tool.jsonDiff.title",
+                descriptionKey: "tool.jsonDiff.description",
                 systemImage: "arrow.left.arrow.right"
             )
 
             HSplitView {
-                jsonInputPane(title: "JSON A", text: $leftText, side: .left)
+                jsonInputPane(
+                    title: localization.text("jsonDiff.inputA"),
+                    text: $leftText,
+                    side: .left
+                )
                     .padding(.trailing, AppTheme.splitPaneSpacing / 2)
-                jsonInputPane(title: "JSON B", text: $rightText, side: .right)
+                jsonInputPane(
+                    title: localization.text("jsonDiff.inputB"),
+                    text: $rightText,
+                    side: .right
+                )
                     .padding(.leading, AppTheme.splitPaneSpacing / 2)
             }
             .frame(minHeight: 190, idealHeight: 230, maxHeight: 300)
 
             ToolControlBar {
-                Button("格式化并对比", systemImage: "arrow.left.arrow.right") { compareJSON() }
+                Button(localization.text("jsonDiff.compare"), systemImage: "arrow.left.arrow.right") {
+                    compareJSON()
+                }
                     .appPrimaryActionStyle()
                     .disabled(leftText.isEmpty || rightText.isEmpty)
                     .keyboardShortcut(.return, modifiers: .command)
-                Button("交换两侧", systemImage: "arrow.triangle.2.circlepath") {
+                Button(localization.text("jsonDiff.swap"), systemImage: "arrow.triangle.2.circlepath") {
                     swap(&leftText, &rightText)
                     diffResult = nil
                     statusMessage = ""
                 }
-                Button("清空", systemImage: "trash") {
+                Button(localization.text("common.clear"), systemImage: "trash") {
                     leftText = ""
                     rightText = ""
                     diffResult = nil
@@ -49,14 +60,32 @@ struct JSONDiffView: View {
 
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
-                    Text("差异结果")
+                    Text(localization.text("jsonDiff.result.title"))
                         .font(.headline)
                     Spacer()
                     if let result = diffResult, !result.isIdentical {
                         HStack(spacing: 12) {
-                            diffLegend(color: .yellow, text: "修改 \(result.modifiedCount)")
-                            diffLegend(color: .green, text: "新增 \(result.addedCount)")
-                            diffLegend(color: .red, text: "删除 \(result.removedCount)")
+                            diffLegend(
+                                color: .yellow,
+                                text: localization.text(
+                                    "jsonDiff.legend.modified",
+                                    Int64(result.modifiedCount)
+                                )
+                            )
+                            diffLegend(
+                                color: .green,
+                                text: localization.text(
+                                    "jsonDiff.legend.added",
+                                    Int64(result.addedCount)
+                                )
+                            )
+                            diffLegend(
+                                color: .red,
+                                text: localization.text(
+                                    "jsonDiff.legend.removed",
+                                    Int64(result.removedCount)
+                                )
+                            )
                         }
                         .font(.caption)
                     }
@@ -66,9 +95,9 @@ struct JSONDiffView: View {
                     JSONDiffResultView(result: diffResult)
                 } else {
                     ContentUnavailableView(
-                        "等待对比",
+                        localization.text("jsonDiff.empty.title"),
                         systemImage: "arrow.left.arrow.right",
-                        description: Text("输入或打开两个 JSON，然后点击“格式化并对比”。")
+                        description: Text(localization.text("jsonDiff.empty.description"))
                     )
                 }
             }
@@ -76,6 +105,7 @@ struct JSONDiffView: View {
             .workspaceSurface()
         }
         .toolPageStyle()
+        .onChange(of: localization.language) { statusMessage = "" }
     }
 
     private enum InputSide { case left, right }
@@ -85,11 +115,17 @@ struct JSONDiffView: View {
             HStack {
                 Text(title).font(.headline)
                 Spacer()
-                Button("打开…", systemImage: "folder") { openFile(for: side) }
+                Button(localization.text("jsonDiff.open"), systemImage: "folder") {
+                    openFile(for: side)
+                }
                     .labelStyle(.titleAndIcon)
                     .controlSize(.large)
             }
-            EditorPane(title: "", text: text, placeholder: "粘贴 JSON…")
+            EditorPane(
+                title: "",
+                text: text,
+                placeholder: localization.text("jsonDiff.placeholder")
+            )
         }
         .frame(minWidth: 300)
     }
@@ -110,16 +146,26 @@ struct JSONDiffView: View {
             rightText = formattedRight
             let result = JSONDiffService.compare(left: formattedLeft, right: formattedRight)
             diffResult = result
-            showStatus(result.isIdentical ? "两个 JSON 完全一致" : "对比完成")
+            showStatus(localization.text(
+                result.isIdentical ? "jsonDiff.status.identical" : "jsonDiff.status.completed"
+            ))
         } catch {
             diffResult = nil
-            showStatus("对比失败：请检查两侧 JSON。\(error.localizedDescription)", isError: true)
+            showStatus(
+                localization.text(
+                    "jsonDiff.status.failed",
+                    localization.errorMessage(for: error)
+                ),
+                isError: true
+            )
         }
     }
 
     private func openFile(for side: InputSide) {
         guard let url = FilePanels.openFiles(
-            title: side == .left ? "选择 JSON A" : "选择 JSON B",
+            title: localization.text(
+                side == .left ? "jsonDiff.panel.selectA" : "jsonDiff.panel.selectB"
+            ),
             types: [.json, .plainText],
             allowsMultipleSelection: false
         ).first else { return }
@@ -128,9 +174,12 @@ struct JSONDiffView: View {
             let content = try String(contentsOf: url, encoding: .utf8)
             if side == .left { leftText = content } else { rightText = content }
             diffResult = nil
-            showStatus("已读取 \(url.lastPathComponent)")
+            showStatus(localization.text("common.status.read", url.lastPathComponent))
         } catch {
-            showStatus("读取失败：\(error.localizedDescription)", isError: true)
+            showStatus(
+                localization.text("common.status.readFailed", localization.errorMessage(for: error)),
+                isError: true
+            )
         }
     }
 
@@ -141,25 +190,26 @@ struct JSONDiffView: View {
 }
 
 private struct JSONDiffResultView: View {
+    @EnvironmentObject private var localization: LocalizationStore
     let result: JSONDiffResult
 
     var body: some View {
         if result.isIdentical {
             ContentUnavailableView(
-                "内容一致",
+                localization.text("jsonDiff.identical.title"),
                 systemImage: "checkmark.circle.fill",
-                description: Text("格式化后的两个 JSON 没有差异。")
+                description: Text(localization.text("jsonDiff.identical.description"))
             )
         } else {
             ScrollView([.horizontal, .vertical]) {
                 LazyVStack(alignment: .leading, spacing: 0) {
                     HStack(spacing: 0) {
-                        Text("JSON A")
+                        Text(localization.text("jsonDiff.inputA"))
                             .font(.caption.weight(.semibold))
                             .frame(width: 470, alignment: .leading)
                             .padding(.leading, 46)
                         Divider()
-                        Text("JSON B")
+                        Text(localization.text("jsonDiff.inputB"))
                             .font(.caption.weight(.semibold))
                             .frame(width: 470, alignment: .leading)
                             .padding(.leading, 46)

@@ -18,6 +18,7 @@ fi
 mkdir -p "$CONTENTS_DIR/MacOS" "$CONTENTS_DIR/Resources"
 cp "$PROJECT_DIR/.build/release/MacGadgets" "$CONTENTS_DIR/MacOS/MacGadgets"
 cp "$PROJECT_DIR/Packaging/Info.plist" "$CONTENTS_DIR/Info.plist"
+cp -R "$PROJECT_DIR/locale" "$CONTENTS_DIR/Resources/locale"
 chmod +x "$CONTENTS_DIR/MacOS/MacGadgets"
 
 swift "$PROJECT_DIR/scripts/prepare-app-icon.swift" "$ICON_ARTWORK" "$ICON_SOURCE"

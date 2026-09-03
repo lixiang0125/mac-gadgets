@@ -20,11 +20,11 @@ enum AppAppearance: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
-    var title: String {
+    var titleKey: String {
         switch self {
-        case .system: "跟随系统"
-        case .light: "浅色"
-        case .dark: "深色"
+        case .system: "appearance.system"
+        case .light: "appearance.light"
+        case .dark: "appearance.dark"
         }
     }
 

@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ClipboardHistoryView: View {
     @EnvironmentObject private var historyStore: ClipboardHistoryStore
+    @EnvironmentObject private var localization: LocalizationStore
     @State private var copiedEntryID: UUID?
     @State private var isShowingClearConfirmation = false
 
@@ -16,8 +17,8 @@ struct ClipboardHistoryView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: AppTheme.pageSpacing) {
             ToolHeader(
-                title: "剪贴板历史",
-                description: "自动保存应用运行期间复制或剪切的最近 100 条文本，仅存储在本机。",
+                titleKey: "tool.clipboard.title",
+                descriptionKey: "tool.clipboard.description",
                 systemImage: "clipboard"
             )
 
@@ -31,11 +32,11 @@ struct ClipboardHistoryView: View {
                 Spacer()
 
                 StatusMessageView(
-                    message: historyStore.storageErrorMessage,
+                    message: localization.text(historyStore.storageErrorKey),
                     isError: true
                 )
 
-                Button("清空历史", systemImage: "trash") {
+                Button(localization.text("clipboard.clearHistory"), systemImage: "trash") {
                     isShowingClearConfirmation = true
                 }
                 .disabled(historyStore.entries.isEmpty)
@@ -44,9 +45,9 @@ struct ClipboardHistoryView: View {
             Group {
                 if historyStore.entries.isEmpty {
                     ContentUnavailableView(
-                        "暂无剪贴板记录",
+                        localization.text("clipboard.empty.title"),
                         systemImage: "clipboard",
-                        description: Text("复制或剪切文本后，记录会自动出现在这里。")
+                        description: Text(localization.text("clipboard.empty.description"))
                     )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
@@ -71,15 +72,18 @@ struct ClipboardHistoryView: View {
         }
         .toolPageStyle()
         .confirmationDialog(
-            "清空所有剪贴板记录？",
+            localization.text("clipboard.confirm.title"),
             isPresented: $isShowingClearConfirmation
         ) {
-            Button("清空 \(historyStore.entries.count) 条记录", role: .destructive) {
+            Button(
+                localization.text("clipboard.confirm.action", Int64(historyStore.entries.count)),
+                role: .destructive
+            ) {
                 historyStore.clearHistory()
             }
-            Button("取消", role: .cancel) {}
+            Button(localization.text("clipboard.confirm.cancel"), role: .cancel) {}
         } message: {
-            Text("此操作不会清空系统当前剪贴板，但无法恢复历史记录。")
+            Text(localization.text("clipboard.confirm.message"))
         }
         .task(id: copiedEntryID) {
             guard copiedEntryID != nil else { return }
@@ -95,22 +99,23 @@ struct ClipboardHistoryView: View {
 
     private func sectionTitle(for date: Date) -> String {
         if Calendar.current.isDateInToday(date) {
-            return "今天"
+            return localization.text("clipboard.date.today")
         }
         if Calendar.current.isDateInYesterday(date) {
-            return "昨天"
+            return localization.text("clipboard.date.yesterday")
         }
         return date.formatted(
             .dateTime
                 .year()
                 .month()
                 .day()
-                .locale(Locale(identifier: "zh_CN"))
+                .locale(localization.language.locale)
         )
     }
 }
 
 private struct ClipboardHistoryRow: View {
+    @EnvironmentObject private var localization: LocalizationStore
     let entry: ClipboardHistoryEntry
     let isCopied: Bool
     let onCopy: () -> Void
@@ -126,8 +131,10 @@ private struct ClipboardHistoryRow: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
 
                 HStack(spacing: 10) {
-                    Text(entry.createdAt.formatted(date: .omitted, time: .shortened))
-                    Text("\(entry.text.count) 字符")
+                    Text(entry.createdAt.formatted(
+                        .dateTime.hour().minute().locale(localization.language.locale)
+                    ))
+                    Text(localization.text("clipboard.characters", Int64(entry.text.count)))
                 }
                 .font(.caption.monospacedDigit())
                 .foregroundStyle(.tertiary)
@@ -136,7 +143,7 @@ private struct ClipboardHistoryRow: View {
             HStack(alignment: .center, spacing: 8) {
                 Button(action: onCopy) {
                     Label(
-                        isCopied ? "已复制" : "复制",
+                        localization.text(isCopied ? "clipboard.copied" : "clipboard.copy"),
                         systemImage: isCopied ? "checkmark" : "doc.on.doc"
                     )
                     .frame(height: AppTheme.compactControlHitSize)
@@ -144,7 +151,7 @@ private struct ClipboardHistoryRow: View {
                 }
                 .buttonStyle(.borderless)
                 .controlSize(.large)
-                .help("复制这条文本")
+                .help(localization.text("clipboard.copy.help"))
 
                 Button(role: .destructive, action: onDelete) {
                     Image(systemName: "trash")
@@ -155,14 +162,14 @@ private struct ClipboardHistoryRow: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.borderless)
-                .help("删除这条记录")
-                .accessibilityLabel("删除记录")
+                .help(localization.text("clipboard.delete.help"))
+                .accessibilityLabel(localization.text("clipboard.delete.accessibility"))
             }
             .frame(height: AppTheme.compactControlHitSize, alignment: .center)
         }
         .padding(.vertical, 6)
         .contentShape(Rectangle())
         .onTapGesture(count: 2, perform: onCopy)
-        .help("双击复制这条文本")
+        .help(localization.text("clipboard.doubleClick.help"))
     }
 }

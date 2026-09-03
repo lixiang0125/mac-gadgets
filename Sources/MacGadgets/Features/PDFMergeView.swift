@@ -2,6 +2,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct PDFMergeView: View {
+    @EnvironmentObject private var localization: LocalizationStore
     @State private var files: [URL] = []
     @State private var selectedFile: URL?
     @State private var statusMessage = ""
@@ -14,17 +15,17 @@ struct PDFMergeView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: AppTheme.pageSpacing) {
             ToolHeader(
-                title: "多 PDF 文件合并",
-                description: "添加多个 PDF，调整顺序后合并为一个新文件。",
+                titleKey: "tool.pdfMerge.title",
+                descriptionKey: "tool.pdfMerge.description",
                 systemImage: "doc.on.doc"
             )
 
             ToolControlBar {
-                Button("添加 PDF…", systemImage: "plus") { addFiles() }
+                Button(localization.text("pdfMerge.add"), systemImage: "plus") { addFiles() }
                     .keyboardShortcut("o", modifiers: .command)
-                Button("移除", systemImage: "minus") { removeSelected() }
+                Button(localization.text("common.remove"), systemImage: "minus") { removeSelected() }
                     .disabled(selectedFile == nil)
-                Button("清空", systemImage: "trash") {
+                Button(localization.text("common.clear"), systemImage: "trash") {
                     files.removeAll()
                     selectedFile = nil
                     statusMessage = ""
@@ -32,7 +33,11 @@ struct PDFMergeView: View {
                 .disabled(files.isEmpty)
 
                 Spacer()
-                Text("\(files.count) 个文件 · 共 \(totalPages) 页")
+                Text(localization.text(
+                    "pdfMerge.summary",
+                    Int64(files.count),
+                    Int64(totalPages)
+                ))
                     .font(.callout.monospacedDigit())
                     .foregroundStyle(.secondary)
             }
@@ -46,7 +51,9 @@ struct PDFMergeView: View {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(url.lastPathComponent)
                                     .lineLimit(1)
-                                Text(PDFService.pageCount(at: url).map { "\($0) 页" } ?? "无法读取")
+                                Text(PDFService.pageCount(at: url).map {
+                                    localization.text("pdfMerge.pages", Int64($0))
+                                } ?? localization.text("common.unreadable"))
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
@@ -65,8 +72,8 @@ struct PDFMergeView: View {
                 .workspaceSurface()
                 .fileDropTarget(
                     isEmpty: files.isEmpty,
-                    title: "拖入 PDF 开始",
-                    description: "也可以点击“添加 PDF”，支持拖动行或使用右侧按钮排序。",
+                    title: localization.text("pdfMerge.drop.title"),
+                    description: localization.text("pdfMerge.drop.description"),
                     systemImage: "doc.badge.plus",
                     onDrop: addDroppedPDFs
                 )
@@ -80,7 +87,9 @@ struct PDFMergeView: View {
             }
 
             ToolControlBar {
-                Button("合并并保存…", systemImage: "square.and.arrow.down") { mergeFiles() }
+                Button(localization.text("pdfMerge.merge"), systemImage: "square.and.arrow.down") {
+                    mergeFiles()
+                }
                     .appPrimaryActionStyle()
                     .disabled(files.count < 2)
                     .keyboardShortcut("s", modifiers: .command)
@@ -89,6 +98,7 @@ struct PDFMergeView: View {
             }
         }
         .toolPageStyle()
+        .onChange(of: localization.language) { statusMessage = "" }
     }
 
     private var selectedIndex: Int? {
@@ -98,7 +108,7 @@ struct PDFMergeView: View {
 
     private func addFiles() {
         let urls = FilePanels.openFiles(
-            title: "选择要合并的 PDF",
+            title: localization.text("pdfMerge.panel.select"),
             types: [.pdf],
             allowsMultipleSelection: true
         )
@@ -110,7 +120,7 @@ struct PDFMergeView: View {
         for url in pdfs where !files.contains(url) { files.append(url) }
         if selectedFile == nil { selectedFile = pdfs.first }
         if pdfs.isEmpty && !urls.isEmpty {
-            showStatus("仅支持 PDF 文件", isError: true)
+            showStatus(localization.text("pdfMerge.status.onlyPDF"), isError: true)
         } else {
             statusMessage = ""
         }
@@ -134,16 +144,26 @@ struct PDFMergeView: View {
 
     private func mergeFiles() {
         guard let destination = FilePanels.saveFile(
-            title: "保存合并后的 PDF",
-            suggestedName: "合并结果.pdf",
+            title: localization.text("pdfMerge.panel.save"),
+            suggestedName: localization.text("pdfMerge.file.defaultName"),
             type: .pdf
         ) else { return }
 
         do {
             let pageCount = try PDFService.merge(files, to: destination)
-            showStatus("合并完成：\(pageCount) 页，已保存为 \(destination.lastPathComponent)")
+            showStatus(localization.text(
+                "pdfMerge.status.completed",
+                Int64(pageCount),
+                destination.lastPathComponent
+            ))
         } catch {
-            showStatus("合并失败：\(error.localizedDescription)", isError: true)
+            showStatus(
+                localization.text(
+                    "pdfMerge.status.failed",
+                    localization.errorMessage(for: error)
+                ),
+                isError: true
+            )
         }
     }
 

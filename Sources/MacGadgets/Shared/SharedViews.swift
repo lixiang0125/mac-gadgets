@@ -2,8 +2,9 @@ import AppKit
 import SwiftUI
 
 struct ToolHeader: View {
-    let title: String
-    let description: String
+    @EnvironmentObject private var localization: LocalizationStore
+    let titleKey: String
+    let descriptionKey: String
     let systemImage: String
 
     var body: some View {
@@ -16,14 +17,17 @@ struct ToolHeader: View {
                 .appGlassSurface()
 
             VStack(alignment: .leading, spacing: 5) {
-                Text(title)
+                Text(localization.text(titleKey))
                     .font(.system(size: 24, weight: .semibold, design: .rounded))
                     .tracking(-0.35)
-                Text(description)
+                Text(localization.text(descriptionKey))
                     .font(.callout)
                     .foregroundStyle(.secondary)
                     .lineSpacing(2)
             }
+
+            Spacer(minLength: 16)
+            LanguageSwitcher()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
@@ -31,6 +35,7 @@ struct ToolHeader: View {
 }
 
 struct EditorPane: View {
+    @EnvironmentObject private var localization: LocalizationStore
     let title: String
     @Binding var text: String
     var placeholder: String = ""
@@ -65,7 +70,11 @@ struct EditorPane: View {
 
     private var editorSummary: String {
         let lineCount = text.isEmpty ? 0 : text.split(separator: "\n", omittingEmptySubsequences: false).count
-        return "\(lineCount) 行  \(text.count) 字符"
+        return localization.text(
+            "common.editorSummary",
+            Int64(lineCount),
+            Int64(text.count)
+        )
     }
 }
 
@@ -262,6 +271,7 @@ struct ToolControlBar<Content: View>: View {
 }
 
 struct FileOrderButtons: View {
+    @EnvironmentObject private var localization: LocalizationStore
     let canMoveUp: Bool
     let canMoveDown: Bool
     let moveUp: () -> Void
@@ -278,7 +288,7 @@ struct FileOrderButtons: View {
                     .contentShape(Rectangle())
             }
             .disabled(!canMoveUp)
-            .help("上移")
+            .help(localization.text("common.moveUp"))
 
             Divider().frame(width: 18)
 
@@ -291,11 +301,43 @@ struct FileOrderButtons: View {
                     .contentShape(Rectangle())
             }
             .disabled(!canMoveDown)
-            .help("下移")
+            .help(localization.text("common.moveDown"))
         }
         .buttonStyle(.borderless)
         .padding(4)
         .appGlassSurface(cornerRadius: 10, interactive: true)
+    }
+}
+
+private struct LanguageSwitcher: View {
+    @EnvironmentObject private var localization: LocalizationStore
+
+    var body: some View {
+        Menu {
+            ForEach(AppLanguage.allCases) { language in
+                Button {
+                    localization.select(language)
+                } label: {
+                    HStack {
+                        Text(localization.text(language.displayNameKey))
+                        if localization.language == language {
+                            Image(systemName: "checkmark")
+                        }
+                    }
+                }
+            }
+        } label: {
+            Label(
+                localization.text(localization.language.displayNameKey),
+                systemImage: "globe"
+            )
+        }
+        .menuStyle(.borderlessButton)
+        .controlSize(.large)
+        .fixedSize()
+        .help(localization.text("language.switch"))
+        .accessibilityLabel(localization.text("language.switch"))
+        .accessibilityValue(localization.text(localization.language.displayNameKey))
     }
 }
 

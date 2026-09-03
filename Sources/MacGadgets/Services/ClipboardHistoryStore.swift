@@ -5,7 +5,7 @@ import Foundation
 @MainActor
 final class ClipboardHistoryStore: ObservableObject {
     @Published private(set) var entries: [ClipboardHistoryEntry] = []
-    @Published private(set) var storageErrorMessage = ""
+    @Published private(set) var storageErrorKey = ""
 
     private let storageURL: URL
     private let pasteboard: NSPasteboard
@@ -14,13 +14,16 @@ final class ClipboardHistoryStore: ObservableObject {
 
     init(
         storageURL: URL = ClipboardHistoryPersistence.defaultStorageURL(),
-        pasteboard: NSPasteboard = .general
+        pasteboard: NSPasteboard = .general,
+        startsMonitoring: Bool = true
     ) {
         self.storageURL = storageURL
         self.pasteboard = pasteboard
         lastPasteboardChangeCount = pasteboard.changeCount
         loadHistory()
-        startMonitoring()
+        if startsMonitoring {
+            startMonitoring()
+        }
     }
 
     func capturePasteboardChange() {
@@ -65,16 +68,16 @@ final class ClipboardHistoryStore: ObservableObject {
                 try ClipboardHistoryPersistence.load(from: storageURL)
             )
         } catch {
-            storageErrorMessage = "无法读取本地剪贴板历史。"
+            storageErrorKey = "clipboard.error.load"
         }
     }
 
     private func saveHistory() {
         do {
             try ClipboardHistoryPersistence.save(entries, to: storageURL)
-            storageErrorMessage = ""
+            storageErrorKey = ""
         } catch {
-            storageErrorMessage = "无法保存剪贴板历史，请检查本机存储权限。"
+            storageErrorKey = "clipboard.error.save"
         }
     }
 }
