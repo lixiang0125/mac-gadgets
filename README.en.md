@@ -6,7 +6,11 @@ A native SwiftUI utility suite for macOS with Chinese and English interfaces. Al
 
 ## Download the Latest Version
 
-[Download the latest Mac Gadgets DMG](release/Mac-Gadgets-latest.dmg)
+<!-- release-download:start -->
+[Download Mac Gadgets v0.2.1 DMG](release/Mac-Gadgets-0.2.1.dmg)
+<!-- release-download:end -->
+
+See [CHANGELOG.md](CHANGELOG.md) for version history.
 
 Open the DMG and drag `Mac Gadgets.app` into the Applications folder to install it.
 
@@ -16,8 +20,8 @@ Open the DMG and drag `Mac Gadgets.app` into the Applications folder to install 
 - Chinese Script Conversion: converts text directly and supports opening and saving TXT files.
 - Merge PDF Files: add PDFs in batches, arrange their order, and merge them.
 - Images and PDF: create a PDF from ordered images or export every PDF page as a PNG.
-- Stitch Images: join images vertically or horizontally and adjust their order.
-- Format JSON: validate, indent, and optionally sort keys in the same editor.
+- Stitch Images: scale proportionally to the widest image for vertical stitching or the tallest image for horizontal stitching, with adjustable ordering; the list and preview use a 3:7 layout, previews fit the window with zoom controls, and clicking a thumbnail opens the source image in a preview dialog.
+- Format JSON: validate, indent, and optionally sort keys in the same editor, with line numbers, nested object/array folding, and Fold All / Unfold All. Copying and saving preserve the full content; editing automatically unfolds it.
 - Compare JSON: format and align two JSON documents, highlighting added, removed, and changed lines.
 
 The sidebar sorts tools by the pinyin of their Chinese names and groups them by initial. Search supports Chinese, English descriptions, and pinyin.
@@ -58,6 +62,7 @@ Tests are organized directly under `Tests`, one suite per tool, and cover normal
 ```bash
 swift test --filter ClipboardHistoryTests
 swift test --filter JSONServiceTests
+swift test --filter JSONFoldingTests
 swift test --filter PDFServiceTests
 ```
 
@@ -82,4 +87,13 @@ The script creates an ad-hoc signed `dist/Mac Gadgets.app`. Distribution still r
 ./scripts/build-release.sh
 ```
 
-The script reads the version from `Packaging/Info.plist`, rebuilds and signs the app, then replaces `release/Mac-Gadgets-latest.dmg`. The README uses this stable path, so the download link does not need to change for each release.
+For every release, first update the version and build number in `Packaging/Info.plist`, then add the matching version, date, and changes at the top of `CHANGELOG.md`.
+
+The script reads the version from `Packaging/Info.plist`, creates `release/Mac-Gadgets-<version>.dmg`, verifies the signature and DMG, and automatically updates the latest download link in both READMEs. Packaging stops if the matching changelog entry is missing. Do not edit the download marker blocks manually or overwrite installers for other versions.
+
+To update or validate release documentation separately, run:
+
+```bash
+swift scripts/update-release-docs.swift --write
+swift scripts/update-release-docs.swift --check
+```

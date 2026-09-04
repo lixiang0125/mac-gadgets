@@ -17,11 +17,7 @@ struct JSONFormatterView: View {
                 systemImage: "curlybraces"
             )
 
-            EditorPane(
-                title: localization.text("jsonFormatter.editor.title"),
-                text: $jsonText,
-                placeholder: localization.text("jsonFormatter.editor.placeholder")
-            )
+            JSONFoldingEditorPane(text: $jsonText)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             ToolControlBar {

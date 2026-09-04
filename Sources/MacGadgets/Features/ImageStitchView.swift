@@ -8,6 +8,7 @@ struct ImageStitchView: View {
     @State private var selectedFile: URL?
     @State private var direction: ImageStitchDirection = .vertical
     @State private var previewImage: NSImage?
+    @State private var sourcePreview: SourceImagePreview?
     @State private var statusMessage = ""
     @State private var hasError = false
 
@@ -45,90 +46,17 @@ struct ImageStitchView: View {
                 .disabled(files.isEmpty)
             }
 
-            HSplitView {
-                HStack(spacing: 10) {
-                    List(selection: $selectedFile) {
-                        ForEach(Array(files.enumerated()), id: \.element) { index, url in
-                            HStack(spacing: 10) {
-                                if let image = NSImage(contentsOf: url) {
-                                    Image(nsImage: image)
-                                        .resizable()
-                                        .scaledToFit()
-                                        .frame(width: 44, height: 38)
-                                }
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(url.lastPathComponent).lineLimit(1)
-                                    Text(dimensions(at: url))
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
-                                Spacer()
-                                Text("\(index + 1)")
-                                    .font(.caption.monospacedDigit())
-                                    .foregroundStyle(.tertiary)
-                            }
-                            .tag(url)
-                            .padding(.vertical, 3)
-                    }
-                    .onMove { offsets, destination in
-                        files.move(fromOffsets: offsets, toOffset: destination)
-                        previewImage = nil
-                    }
+            GeometryReader { geometry in
+                let widths = ImageStitchPaneWidths(
+                    availableWidth: geometry.size.width,
+                    spacing: AppTheme.splitPaneSpacing
+                )
+                HStack(spacing: AppTheme.splitPaneSpacing) {
+                    imageList
+                        .frame(width: widths.list, height: geometry.size.height)
+                    previewPane
+                        .frame(width: widths.preview, height: geometry.size.height)
                 }
-                    .workspaceSurface()
-                    .fileDropTarget(
-                        isEmpty: files.isEmpty,
-                        title: localization.text("imageStitch.drop.title"),
-                        description: localization.text("imageStitch.drop.description"),
-                        systemImage: "photo.stack",
-                        onDrop: addDroppedImages
-                    )
-
-                    FileOrderButtons(
-                        canMoveUp: selectedIndex.map { $0 > 0 } ?? false,
-                        canMoveDown: selectedIndex.map { $0 < files.count - 1 } ?? false,
-                        moveUp: { moveSelected(by: -1) },
-                        moveDown: { moveSelected(by: 1) }
-                    )
-                }
-                .frame(minWidth: 330)
-                .padding(.trailing, AppTheme.splitPaneSpacing / 2)
-
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Text(localization.text("imageStitch.preview.title"))
-                            .font(.headline)
-                        Spacer()
-                        if let previewImage {
-                            let size = ImageStitchService.pixelSize(of: previewImage)
-                            Text("\(Int(size.width)) × \(Int(size.height))")
-                                .font(.caption.monospacedDigit())
-                                .foregroundStyle(.tertiary)
-                        }
-                    }
-                    ZStack {
-                        Color(nsColor: .windowBackgroundColor)
-                        if let previewImage {
-                            ScrollView([.horizontal, .vertical]) {
-                                Image(nsImage: previewImage)
-                                    .resizable()
-                                    .scaledToFit()
-                                    .padding()
-                            }
-                        } else {
-                            ContentUnavailableView(
-                                localization.text("imageStitch.preview.empty"),
-                                systemImage: direction.systemImage,
-                                description: Text(localization.text("imageStitch.preview.description"))
-                            )
-                        }
-                    }
-                    .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
-                }
-                .padding(12)
-                .workspaceSurface()
-                .frame(minWidth: 330)
-                .padding(.leading, AppTheme.splitPaneSpacing / 2)
             }
 
             ToolControlBar {
@@ -148,6 +76,135 @@ struct ImageStitchView: View {
         }
         .toolPageStyle()
         .onChange(of: localization.language) { statusMessage = "" }
+        .sheet(item: $sourcePreview) { source in
+            SourceImagePreviewSheet(source: source)
+                .environmentObject(localization)
+        }
+    }
+
+    private var imageList: some View {
+        VStack(spacing: 0) {
+            List(selection: $selectedFile) {
+                ForEach(Array(files.enumerated()), id: \.element) { index, url in
+                    HStack(spacing: 8) {
+                        Button {
+                            showSourcePreview(at: url)
+                        } label: {
+                            Group {
+                                if let image = NSImage(contentsOf: url) {
+                                    Image(nsImage: image)
+                                        .resizable()
+                                        .scaledToFit()
+                                } else {
+                                    Image(systemName: "photo")
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.borderless)
+                        .help(localization.text("imageStitch.source.preview", url.lastPathComponent))
+                        .accessibilityLabel(localization.text("imageStitch.source.preview", url.lastPathComponent))
+
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(url.lastPathComponent)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                                .help(url.lastPathComponent)
+                            Text(dimensions(at: url))
+                                .font(.caption.monospacedDigit())
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        Text("\(index + 1)")
+                            .font(.caption.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                    }
+                    .tag(url)
+                    .padding(.vertical, 3)
+                    .accessibilityElement(children: .contain)
+                    .accessibilityAction(named: Text(localization.text("imageStitch.source.preview", url.lastPathComponent))) {
+                        showSourcePreview(at: url)
+                    }
+                }
+                .onMove { offsets, destination in
+                    files.move(fromOffsets: offsets, toOffset: destination)
+                    previewImage = nil
+                }
+            }
+            .fileDropTarget(
+                isEmpty: files.isEmpty,
+                title: localization.text("imageStitch.drop.title"),
+                description: localization.text("imageStitch.drop.description"),
+                systemImage: "photo.stack",
+                onDrop: addDroppedImages
+            )
+
+            Divider()
+            HStack(spacing: 8) {
+                Text(localization.text("imageStitch.source.hint"))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 0)
+                FileOrderButtons(
+                    canMoveUp: selectedIndex.map { $0 > 0 } ?? false,
+                    canMoveDown: selectedIndex.map { $0 < files.count - 1 } ?? false,
+                    moveUp: { moveSelected(by: -1) },
+                    moveDown: { moveSelected(by: 1) },
+                    axis: .horizontal
+                )
+            }
+            .padding(10)
+        }
+        .workspaceSurface()
+    }
+
+    private var previewPane: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text(localization.text("imageStitch.preview.title"))
+                    .font(.headline)
+                Spacer()
+                if let previewImage {
+                    let size = ImageStitchService.pixelSize(of: previewImage)
+                    Text("\(Int(size.width)) × \(Int(size.height))")
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                }
+            }
+            if let previewImage {
+                ZoomableImagePreview(
+                    image: previewImage,
+                    accessibilityLabel: localization.text("imageStitch.preview.title")
+                )
+                // Every newly generated result starts at fit-to-window, even
+                // when it has the same dimensions as the previous image.
+                .id(ObjectIdentifier(previewImage))
+            } else {
+                ContentUnavailableView(
+                    localization.text("imageStitch.preview.empty"),
+                    systemImage: direction.systemImage,
+                    description: Text(localization.text("imageStitch.preview.description"))
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(AppTheme.canvas)
+                .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+            }
+        }
+        .padding(12)
+        .workspaceSurface()
+    }
+
+    private func showSourcePreview(at url: URL) {
+        selectedFile = url
+        guard let source = SourceImagePreview(url: url) else {
+            showStatus(localization.text("imageStitch.status.sourcePreviewFailed"), isError: true)
+            return
+        }
+        sourcePreview = source
     }
 
     private var selectedIndex: Int? {

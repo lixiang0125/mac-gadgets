@@ -190,7 +190,7 @@ private struct AlignedTextEditor: NSViewRepresentable {
     }
 }
 
-private final class PlaceholderTextView: NSTextView {
+class PlaceholderTextView: NSTextView {
     var placeholder = "" {
         didSet {
             if oldValue != placeholder {
@@ -276,9 +276,13 @@ struct FileOrderButtons: View {
     let canMoveDown: Bool
     let moveUp: () -> Void
     let moveDown: () -> Void
+    var axis: Axis = .vertical
 
     var body: some View {
-        VStack(spacing: 2) {
+        let layout = axis == .horizontal
+            ? AnyLayout(HStackLayout(spacing: 2))
+            : AnyLayout(VStackLayout(spacing: 2))
+        layout {
             Button(action: moveUp) {
                 Image(systemName: "chevron.up")
                     .frame(
@@ -289,8 +293,13 @@ struct FileOrderButtons: View {
             }
             .disabled(!canMoveUp)
             .help(localization.text("common.moveUp"))
+            .accessibilityLabel(localization.text("common.moveUp"))
 
-            Divider().frame(width: 18)
+            if axis == .horizontal {
+                Divider().frame(height: 18)
+            } else {
+                Divider().frame(width: 18)
+            }
 
             Button(action: moveDown) {
                 Image(systemName: "chevron.down")
@@ -302,10 +311,12 @@ struct FileOrderButtons: View {
             }
             .disabled(!canMoveDown)
             .help(localization.text("common.moveDown"))
+            .accessibilityLabel(localization.text("common.moveDown"))
         }
         .buttonStyle(.borderless)
         .padding(4)
         .appGlassSurface(cornerRadius: 10, interactive: true)
+        .foregroundStyle(.primary)
     }
 }
 

@@ -6,7 +6,11 @@
 
 ## 下载最新版
 
-[下载 Mac Gadgets 最新版 DMG](release/Mac-Gadgets-latest.dmg)
+<!-- release-download:start -->
+[下载 Mac Gadgets v0.2.1 DMG](release/Mac-Gadgets-0.2.1.dmg)
+<!-- release-download:end -->
+
+版本变更详见 [CHANGELOG.md](CHANGELOG.md)。
 
 打开 DMG 后，将 `Mac Gadgets.app` 拖入“应用程序”文件夹即可完成安装。
 
@@ -16,8 +20,8 @@
 - 中文简繁转换：文本直接转换，支持读取与保存 TXT 文件。
 - 多 PDF 合并：批量添加、调整顺序并合并 PDF。
 - 图片与 PDF 互转：多张图片按顺序生成 PDF；PDF 每页导出一张 PNG。
-- 多图片拼成长图：支持横向、竖向拼接和顺序调整。
-- JSON 格式化：在同一个编辑器内完成语法校验、统一缩进及可选键名排序。
+- 多图片拼成长图：竖向按最大宽度等比缩放至同宽，横向按最大高度等比缩放至同高，并支持顺序调整；列表与预览区采用 3:7 布局，预览默认适应窗口、支持缩放，点击缩略图可弹窗查看原图。
+- JSON 格式化：在同一个编辑器内完成语法校验、统一缩进及可选键名排序；支持行号、对象/数组的嵌套折叠及全部折叠/展开。折叠不影响复制或保存的完整内容，开始编辑时自动展开。
 - JSON 对比：格式化后逐行对齐，高亮新增、删除及修改行。
 
 左侧工具列表以工具名称的拼音排序并按首字母分组，也支持中文、说明文字和拼音搜索。
@@ -58,6 +62,7 @@ swift test
 ```bash
 swift test --filter ClipboardHistoryTests
 swift test --filter JSONServiceTests
+swift test --filter JSONFoldingTests
 swift test --filter PDFServiceTests
 ```
 
@@ -82,4 +87,13 @@ open "dist/Mac Gadgets.app"
 ./scripts/build-release.sh
 ```
 
-脚本从 `Packaging/Info.plist` 读取版本号，重新构建并签名 App，然后覆盖生成 `release/Mac-Gadgets-latest.dmg`。README 使用这个稳定路径，发布新版本时无需修改下载链接。
+每次发布先更新 `Packaging/Info.plist` 的版本号与构建号，并在 `CHANGELOG.md` 顶部补充对应版本、日期和变更内容。
+
+脚本从 `Packaging/Info.plist` 读取版本号，生成 `release/Mac-Gadgets-<版本号>.dmg`，验证签名及 DMG 后自动同步两个 README 的最新下载链接；缺少对应更新日志会中止打包。不要手工修改下载标记区，也不要覆盖其他版本的安装包。
+
+仅同步或校验发布文档时可运行：
+
+```bash
+swift scripts/update-release-docs.swift --write
+swift scripts/update-release-docs.swift --check
+```

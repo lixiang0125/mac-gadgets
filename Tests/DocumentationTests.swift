@@ -11,10 +11,17 @@ final class DocumentationTests: XCTestCase {
             contentsOf: testRepositoryRoot.appendingPathComponent("README.en.md"),
             encoding: .utf8
         )
+        let plist = try XCTUnwrap(PropertyListSerialization.propertyList(
+            from: Data(contentsOf: testRepositoryRoot.appendingPathComponent("Packaging/Info.plist")),
+            format: nil
+        ) as? [String: Any])
+        let version = try XCTUnwrap(plist["CFBundleShortVersionString"] as? String)
 
         for readme in [chinese, english] {
             XCTAssertTrue(readme.contains("[中文](README.md) | [English](README.en.md)"))
-            XCTAssertTrue(readme.contains("release/Mac-Gadgets-latest.dmg"))
+            XCTAssertTrue(readme.contains("](release/Mac-Gadgets-\(version).dmg)"))
+            XCTAssertFalse(readme.contains("Mac-Gadgets-latest.dmg"))
+            XCTAssertTrue(readme.contains("[CHANGELOG.md](CHANGELOG.md)"))
             XCTAssertTrue(readme.contains("locale/zh-CN.json"))
             XCTAssertTrue(readme.contains("locale/en.json"))
         }
